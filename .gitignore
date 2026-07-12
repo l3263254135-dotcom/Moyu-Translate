@@ -1,0 +1,8 @@
+.DS_Store
+.build/
+.swiftpm/
+.superpowers/
+dist/
+tmp/
+__pycache__/
+Sources/MoyuTranslate/Resources/dictionary.sqlite-journal
