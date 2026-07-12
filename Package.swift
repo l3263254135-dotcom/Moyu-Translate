@@ -13,7 +13,10 @@ let package = Package(
         .executableTarget(
             name: "MoyuTranslate",
             exclude: ["Resources"],
-            linkerSettings: [.linkedLibrary("sqlite3")]
+            linkerSettings: [
+                .linkedLibrary("sqlite3"),
+                .linkedFramework("CoreServices")
+            ]
         ),
         .testTarget(
             name: "MoyuTranslateTests",

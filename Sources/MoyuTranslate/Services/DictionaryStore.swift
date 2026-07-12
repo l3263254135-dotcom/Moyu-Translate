@@ -40,7 +40,7 @@ final class DictionaryStore: DictionaryLookingUp, @unchecked Sendable {
         defer { lock.unlock() }
 
         guard let database else { return fallback[normalized] }
-        let query = "SELECT word, part_of_speech, meanings FROM entries WHERE word = ?1 LIMIT 1"
+        let query = "SELECT word, part_of_speech, meanings, tags FROM entries WHERE word = ?1 LIMIT 1"
         var statement: OpaquePointer?
         guard sqlite3_prepare_v2(database, query, -1, &statement, nil) == SQLITE_OK else {
             return fallback[normalized]
@@ -55,8 +55,10 @@ final class DictionaryStore: DictionaryLookingUp, @unchecked Sendable {
         let partOfSpeech = sqlite3_column_text(statement, 1).map { String(cString: $0) }
         let meaningsJSON = String(cString: sqlite3_column_text(statement, 2))
         let meanings = (try? JSONDecoder().decode([String].self, from: Data(meaningsJSON.utf8))) ?? []
+        let tagsJSON = sqlite3_column_text(statement, 3).map { String(cString: $0) } ?? "[]"
+        let tags = (try? JSONDecoder().decode([String].self, from: Data(tagsJSON.utf8))) ?? []
         guard !meanings.isEmpty else { return fallback[normalized] }
-        return DictionaryEntry(word: storedWord, partOfSpeech: partOfSpeech, meanings: meanings)
+        return DictionaryEntry(word: storedWord, partOfSpeech: partOfSpeech, meanings: meanings, tags: tags)
     }
 
     private static func loadFallback() -> [String: DictionaryEntry] {

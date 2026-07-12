@@ -27,6 +27,43 @@ struct TranslationRequest: Equatable, Sendable {
     let origin: TranslationOrigin
     let sourceLanguage: SupportedLanguage
     let targetLanguage: SupportedLanguage
+    let dictionaryOptions: DictionaryLookupOptions
+
+    init(
+        text: String,
+        origin: TranslationOrigin,
+        sourceLanguage: SupportedLanguage,
+        targetLanguage: SupportedLanguage,
+        dictionaryOptions: DictionaryLookupOptions = .all
+    ) {
+        self.text = text
+        self.origin = origin
+        self.sourceLanguage = sourceLanguage
+        self.targetLanguage = targetLanguage
+        self.dictionaryOptions = dictionaryOptions
+    }
+}
+
+struct DictionaryLookupOptions: Equatable, Sendable {
+    let usesECDICT: Bool
+    let usesSystemDictionary: Bool
+    let showsExamTags: Bool
+
+    static let all = DictionaryLookupOptions(
+        usesECDICT: true,
+        usesSystemDictionary: true,
+        showsExamTags: true
+    )
+}
+
+enum DictionarySource: String, Codable, Sendable {
+    case systemDictionary
+}
+
+struct DictionarySection: Equatable, Sendable {
+    let source: DictionarySource
+    let title: String
+    let entries: [String]
 }
 
 struct TranslationResult: Equatable, Sendable {
@@ -36,6 +73,28 @@ struct TranslationResult: Equatable, Sendable {
     let partOfSpeech: String?
     let provider: String
     let latencyMilliseconds: Int
+    let dictionarySections: [DictionarySection]
+    let vocabularyTags: [String]
+
+    init(
+        sourceText: String,
+        primaryText: String,
+        alternatives: [String],
+        partOfSpeech: String?,
+        provider: String,
+        latencyMilliseconds: Int,
+        dictionarySections: [DictionarySection] = [],
+        vocabularyTags: [String] = []
+    ) {
+        self.sourceText = sourceText
+        self.primaryText = primaryText
+        self.alternatives = Array(alternatives.prefix(2))
+        self.partOfSpeech = partOfSpeech
+        self.provider = provider
+        self.latencyMilliseconds = latencyMilliseconds
+        self.dictionarySections = dictionarySections.filter { !$0.entries.isEmpty }
+        self.vocabularyTags = vocabularyTags
+    }
 
     func visibleMeanings(expanded: Bool) -> [String] {
         expanded ? [primaryText] + alternatives.prefix(2) : [primaryText]
@@ -46,6 +105,29 @@ struct DictionaryEntry: Codable, Equatable, Sendable {
     let word: String
     let partOfSpeech: String?
     let meanings: [String]
+    let tags: [String]
+
+    init(word: String, partOfSpeech: String?, meanings: [String], tags: [String] = []) {
+        self.word = word
+        self.partOfSpeech = partOfSpeech
+        self.meanings = meanings
+        self.tags = tags
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case word
+        case partOfSpeech
+        case meanings
+        case tags
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        word = try container.decode(String.self, forKey: .word)
+        partOfSpeech = try container.decodeIfPresent(String.self, forKey: .partOfSpeech)
+        meanings = try container.decode([String].self, forKey: .meanings)
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+    }
 }
 
 struct CapturedText: Equatable, Sendable {

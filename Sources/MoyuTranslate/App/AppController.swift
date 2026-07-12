@@ -48,6 +48,9 @@ final class AppController {
                         if environment["MOYU_UI_TEST_EXPANDED"] == "1" {
                             self.model.isExpanded = true
                         }
+                        if environment["MOYU_UI_TEST_DICTIONARY_EXPANDED"] == "1" {
+                            self.model.isDictionaryExpanded = true
+                        }
                     }
                 }
             }

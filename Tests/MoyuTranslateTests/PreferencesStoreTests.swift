@@ -12,10 +12,14 @@ struct PreferencesStoreTests {
         first.theme = .dark
         first.direction = .englishToChinese
         first.isPinned = true
+        first.usesSystemDictionary = false
+        first.showsExamTags = false
 
         let second = PreferencesStore(defaults: defaults, defaultTheme: .light)
         #expect(second.theme == .dark)
         #expect(second.direction == .englishToChinese)
         #expect(second.isPinned)
+        #expect(!second.usesSystemDictionary)
+        #expect(!second.showsExamTags)
     }
 }

@@ -17,6 +17,16 @@ COMMIT = "bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b"
 SOURCE_URL = "https://github.com/skywind3000/ECDICT.git"
 WORD_PATTERN = re.compile(r"^[A-Za-z][A-Za-z' -]*$")
 POS_PATTERN = re.compile(r"^([a-z]+\.)\s*(.*)$", re.IGNORECASE)
+TAG_LABELS = {
+    "ielts": "IELTS",
+    "toefl": "TOEFL",
+    "gre": "GRE",
+    "cet4": "CET-4",
+    "cet6": "CET-6",
+    "ky": "考研",
+    "gk": "高考",
+    "zk": "中考",
+}
 
 
 def parse_rank(value: str | None) -> int | None:
@@ -52,6 +62,17 @@ def parse_meanings(translation: str) -> tuple[str | None, list[str]]:
             if len(meanings) >= 3:
                 return part_of_speech, meanings
     return part_of_speech, meanings
+
+
+def parse_tags(row: dict[str, str]) -> list[str]:
+    tags: list[str] = []
+    if row.get("oxford") == "1":
+        tags.append("Oxford 3000")
+    source_tags = set((row.get("tag") or "").lower().split())
+    for key, label in TAG_LABELS.items():
+        if key in source_tags:
+            tags.append(label)
+    return tags
 
 
 def download(source: Path) -> str:
@@ -96,11 +117,11 @@ def build(source: Path, output: Path, digest_file: Path, fallback_file: Path) ->
     connection.execute("PRAGMA synchronous=OFF")
     connection.execute("PRAGMA temp_store=MEMORY")
     connection.execute(
-        "CREATE TABLE entries (word TEXT PRIMARY KEY, part_of_speech TEXT, meanings TEXT NOT NULL) WITHOUT ROWID"
+        "CREATE TABLE entries (word TEXT PRIMARY KEY, part_of_speech TEXT, meanings TEXT NOT NULL, tags TEXT NOT NULL) WITHOUT ROWID"
     )
 
     inserted = 0
-    batch: list[tuple[str, str | None, str]] = []
+    batch: list[tuple[str, str | None, str, str]] = []
     csv.field_size_limit(sys.maxsize)
     with source.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
@@ -111,14 +132,21 @@ def build(source: Path, output: Path, digest_file: Path, fallback_file: Path) ->
             part_of_speech, meanings = parse_meanings(row.get("translation") or "")
             if not meanings:
                 continue
-            batch.append((word, part_of_speech, json.dumps(meanings, ensure_ascii=False, separators=(",", ":"))))
+            batch.append(
+                (
+                    word,
+                    part_of_speech,
+                    json.dumps(meanings, ensure_ascii=False, separators=(",", ":")),
+                    json.dumps(parse_tags(row), ensure_ascii=False, separators=(",", ":")),
+                )
+            )
             if len(batch) >= 2_000:
-                connection.executemany("INSERT OR REPLACE INTO entries VALUES (?, ?, ?)", batch)
+                connection.executemany("INSERT OR REPLACE INTO entries VALUES (?, ?, ?, ?)", batch)
                 inserted += len(batch)
                 batch.clear()
 
     if batch:
-        connection.executemany("INSERT OR REPLACE INTO entries VALUES (?, ?, ?)", batch)
+        connection.executemany("INSERT OR REPLACE INTO entries VALUES (?, ?, ?, ?)", batch)
         inserted += len(batch)
 
     if fallback_file.exists():
@@ -128,22 +156,32 @@ def build(source: Path, output: Path, digest_file: Path, fallback_file: Path) ->
                 entry["word"].strip().lower(),
                 entry.get("partOfSpeech"),
                 json.dumps(entry["meanings"][:3], ensure_ascii=False, separators=(",", ":")),
+                json.dumps(entry.get("tags", []), ensure_ascii=False, separators=(",", ":")),
             )
             for entry in fallback_entries
             if entry.get("word") and entry.get("meanings")
         ]
-        connection.executemany("INSERT OR REPLACE INTO entries VALUES (?, ?, ?)", fallback_rows)
+        connection.executemany(
+            """
+            INSERT INTO entries VALUES (?, ?, ?, ?)
+            ON CONFLICT(word) DO UPDATE SET
+                part_of_speech = excluded.part_of_speech,
+                meanings = excluded.meanings
+            """,
+            fallback_rows,
+        )
         inserted += len(fallback_rows)
     connection.commit()
+    unique_entries = connection.execute("SELECT count(*) FROM entries").fetchone()[0]
     connection.execute("VACUUM")
     connection.close()
 
     digest_file.write_text(
-        f"ECDICT commit: {COMMIT}\nSource SHA-256: {digest}\nEntries: {inserted}\n",
+        f"ECDICT commit: {COMMIT}\nSource SHA-256: {digest}\nEntries: {unique_entries}\n",
         encoding="utf-8",
     )
-    print(f"Wrote {inserted} entries to {output}")
-    return inserted
+    print(f"Wrote {unique_entries} unique entries to {output}")
+    return unique_entries
 
 
 def main() -> None:

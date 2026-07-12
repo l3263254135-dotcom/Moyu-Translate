@@ -50,10 +50,19 @@ struct SettingsView: View {
                 LabeledContent("ECDICT", value: "内置")
                 LabeledContent("Apple Translation", value: appleTranslation.statusText)
             }
+
+            Section("词典来源") {
+                Toggle("ECDICT 开放词典", isOn: $preferences.usesECDICT)
+                Toggle("macOS 系统词典", isOn: $preferences.usesSystemDictionary)
+                Toggle("考试词汇标签", isOn: $preferences.showsExamTags)
+                Text("系统词典读取“词典”App 中已启用的本地内容；可用词典因 macOS 版本和用户设置而异。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .formStyle(.grouped)
         .padding(16)
-        .frame(width: 480, height: 420)
+        .frame(width: 500, height: 530)
         .onAppear { permissions.refresh() }
     }
 

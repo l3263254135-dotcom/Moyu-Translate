@@ -142,6 +142,7 @@ final class PanelCoordinator: NSObject, NSWindowDelegate {
             _ = model.result
             _ = model.errorMessage
             _ = model.isExpanded
+            _ = model.isDictionaryExpanded
             _ = model.isWorking
         } onChange: { [weak self] in
             DispatchQueue.main.async {
@@ -162,6 +163,16 @@ final class PanelCoordinator: NSObject, NSWindowDelegate {
         let top = frame.maxY
         frame.size = NSSize(width: 400, height: targetHeight)
         frame.origin.y = top - targetHeight
+        if let visibleFrame = panel.screen?.visibleFrame ?? NSScreen.main?.visibleFrame {
+            frame.origin.x = min(
+                max(frame.origin.x, visibleFrame.minX + 8),
+                visibleFrame.maxX - frame.width - 8
+            )
+            frame.origin.y = min(
+                max(frame.origin.y, visibleFrame.minY + 8),
+                visibleFrame.maxY - frame.height - 8
+            )
+        }
         panel.setFrame(frame, display: panel.isVisible, animate: panel.isVisible)
     }
 }

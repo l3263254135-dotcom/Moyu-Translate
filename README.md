@@ -7,7 +7,9 @@ Moyu Translate 是一款原生 macOS 菜单栏翻译工具。长按 Option 约 3
 ## 功能
 
 - macOS 15+，Apple Silicon 与 Intel 通用构建
-- 常用英文单词使用内置精简 ECDICT，未命中时自动回退到 Apple 本地翻译
+- 58,000+ 常用英文词条使用内置精简 ECDICT，未命中时自动回退到 Apple 本地翻译
+- 主释义保持简洁，其他释义和 macOS 系统词典内容可分别折叠展开
+- 显示 Oxford 3000、IELTS、TOEFL、GRE 等词汇标签（来自 ECDICT 元数据）
 - 英文短语、句子及中译英使用 Apple Translation 本地语言包
 - 辅助功能文本优先，ScreenCaptureKit + Vision OCR 回退
 - 日间/夜间主题、窗口固定、多显示器与全屏 Space 支持
@@ -37,7 +39,7 @@ swift test
 ./script/build_dictionary.py
 ```
 
-仓库提交的 v0.1.0 数据库使用 ECDICT 官方 mini 样本和人工校对的常用词条作为离线种子；完整 CSV 因构建环境网络限制未直接提交。运行时未命中的词条仍由 Apple 本地语言包翻译。
+仓库提交的 v0.1.1 数据库由固定提交的完整 ECDICT CSV 筛选生成，并用项目维护的常用词条校正高频释义。原始 63MB CSV 不提交，来源提交、SHA-256 和唯一词条数记录在 `Sources/MoyuTranslate/Resources/ECDICT_SOURCE.txt`。运行时未命中的词条仍由 Apple 本地语言包翻译。
 
 重新生成本地图标资产：
 
@@ -50,7 +52,9 @@ image-2 的最终替换提示词保存在 `Assets/IMAGEGEN_PROMPT.md`。当前�
 
 ## 权限与隐私
 
-Moyu Translate 需要辅助功能权限来监听全局 Option 并读取可访问文本，需要屏幕录制权限来识别图片、视频和游戏画面。所有识别、查词与翻译均在本机执行；应用不包含分析、账号、云端 API、历史或收藏功能。
+Moyu Translate 需要辅助功能权限来监听全局 Option 并读取可访问文本，需要屏幕录制权限来识别图片、视频和游戏画面。应用还可读取“词典”App 中已启用的 macOS 本地词典；不会复制或上传词典内容。所有识别、查词与翻译均在本机执行；应用不包含分析、账号、云端 API、历史或收藏功能。
+
+Oxford、Cambridge 等商业词典正文不随应用分发。macOS 系统词典可能包含 Oxford，实际来源取决于用户系统版本与“词典”App 设置；应用统一如实标记为“macOS 系统词典”。IELTS、TOEFL 等显示为考试词汇标签，不标记为独立词典。
 
 完整安装与操作说明见 [中文用户指南](docs/USER_GUIDE.zh-CN.md)。
 

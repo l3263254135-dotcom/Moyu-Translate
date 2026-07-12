@@ -36,7 +36,10 @@ hdiutil create \
   -ov \
   -format UDZO \
   "$DMG_PATH"
-shasum -a 256 "$DMG_PATH" > "$DIST_DIR/Moyu Translate.dmg.sha256"
+(
+  cd "$DIST_DIR"
+  shasum -a 256 "Moyu Translate.dmg" > "Moyu Translate.dmg.sha256"
+)
 
 echo "Created $DMG_PATH"
 lipo -archs "$APP_BUNDLE/Contents/MacOS/MoyuTranslate"

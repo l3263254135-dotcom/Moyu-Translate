@@ -147,33 +147,96 @@ struct FloatingPanelView: View {
                 .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
         } else if let result = model.result {
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(Array(result.visibleMeanings(expanded: model.isExpanded).enumerated()), id: \.offset) { index, meaning in
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        if index == 0, let partOfSpeech = result.partOfSpeech {
-                            Text(partOfSpeech)
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(palette.accent)
-                        } else if result.partOfSpeech != nil {
-                            Color.clear.frame(width: 20, height: 1)
-                        }
-                        Text(meaning)
-                            .font(.system(size: index == 0 ? 15 : 13, weight: index == 0 ? .medium : .regular))
-                            .foregroundStyle(index == 0 ? palette.text : palette.secondaryText)
-                            .textSelection(.enabled)
-                        Spacer(minLength: 6)
-                        if index == 0, !result.alternatives.isEmpty {
-                            Button {
-                                withAnimation(.easeOut(duration: 0.16)) { model.isExpanded.toggle() }
-                            } label: {
-                                Image(systemName: model.isExpanded ? "chevron.up" : "chevron.down")
-                                    .font(.system(size: 10, weight: .bold))
-                                    .frame(width: 24, height: 24)
-                                    .background(Circle().fill(palette.separator.opacity(0.6)))
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    if let partOfSpeech = result.partOfSpeech {
+                        Text(partOfSpeech)
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(palette.accent)
+                    }
+                    Text(result.primaryText)
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(palette.text)
+                        .textSelection(.enabled)
+                    Spacer(minLength: 6)
+                }
+
+                if !result.vocabularyTags.isEmpty {
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 5) {
+                            ForEach(result.vocabularyTags, id: \.self) { tag in
+                                Text(tag)
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .foregroundStyle(palette.accent)
+                                    .padding(.horizontal, 6)
+                                    .frame(height: 18)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 4)
+                                            .fill(palette.accent.opacity(0.11))
+                                    )
                             }
-                            .buttonStyle(.plain)
-                            .foregroundStyle(palette.secondaryText)
-                            .help(model.isExpanded ? "收起释义" : "展开更多释义")
                         }
+                    }
+                    .scrollIndicators(.hidden)
+                    .frame(height: 18)
+                }
+
+                if !result.alternatives.isEmpty {
+                    disclosureRow(
+                        title: "其他释义",
+                        detail: "\(result.alternatives.count)",
+                        isExpanded: model.isExpanded
+                    ) {
+                        withAnimation(.easeOut(duration: 0.16)) { model.isExpanded.toggle() }
+                    }
+
+                    if model.isExpanded {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ForEach(Array(result.alternatives.enumerated()), id: \.offset) { index, meaning in
+                                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                                    Text("\(index + 2)")
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundStyle(palette.accent)
+                                        .frame(width: 16, alignment: .trailing)
+                                    Text(meaning)
+                                        .font(.system(size: 13))
+                                        .foregroundStyle(palette.secondaryText)
+                                        .textSelection(.enabled)
+                                }
+                            }
+                        }
+                        .padding(.leading, 2)
+                    }
+                }
+
+                if !result.dictionarySections.isEmpty {
+                    disclosureRow(
+                        title: "系统词典",
+                        detail: "\(result.dictionarySections.count)",
+                        isExpanded: model.isDictionaryExpanded
+                    ) {
+                        withAnimation(.easeOut(duration: 0.16)) { model.isDictionaryExpanded.toggle() }
+                    }
+
+                    if model.isDictionaryExpanded {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 10) {
+                                ForEach(Array(result.dictionarySections.enumerated()), id: \.offset) { _, section in
+                                    VStack(alignment: .leading, spacing: 5) {
+                                        Text(section.title)
+                                            .font(.system(size: 10, weight: .semibold))
+                                            .foregroundStyle(palette.accent)
+                                        ForEach(section.entries, id: \.self) { entry in
+                                            Text(entry)
+                                                .font(.system(size: 12))
+                                                .foregroundStyle(palette.secondaryText)
+                                                .textSelection(.enabled)
+                                                .frame(maxWidth: .infinity, alignment: .leading)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .frame(maxHeight: 160)
                     }
                 }
             }
@@ -187,5 +250,30 @@ struct FloatingPanelView: View {
                 .foregroundStyle(palette.secondaryText)
                 .frame(maxWidth: .infinity, minHeight: 30, alignment: .leading)
         }
+    }
+
+    private func disclosureRow(
+        title: String,
+        detail: String,
+        isExpanded: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 7) {
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .frame(width: 10)
+                Text(title)
+                    .font(.system(size: 11, weight: .medium))
+                Spacer()
+                Text(detail)
+                    .font(.system(size: 10))
+            }
+            .foregroundStyle(palette.secondaryText)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 2)
+        .accessibilityValue(isExpanded ? "已展开" : "已折叠")
     }
 }

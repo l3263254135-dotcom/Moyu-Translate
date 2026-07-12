@@ -5,7 +5,7 @@
 - Project: ECDICT - Free English to Chinese Dictionary Database
 - Source: https://github.com/skywind3000/ECDICT
 - Pinned commit: `bc015ed2e24a7abef49fc6dbbb7fe32c1dadaf8b`
-- Bundled source subset: `ecdict.mini.csv`, augmented with project-maintained common entries
+- Bundled derived data: compact SQLite subset generated from the pinned full CSV, augmented with project-maintained common entries
 - License: MIT
 
 Copyright (c) 2025 Linwei

@@ -13,6 +13,7 @@ final class AppModel {
     private(set) var isWorking = false
     private(set) var errorMessage: String?
     var isExpanded = false
+    var isDictionaryExpanded = false
     private(set) var focusRequestID = UUID()
 
     @ObservationIgnored private let engine: TranslationEngine
@@ -47,12 +48,14 @@ final class AppModel {
             isWorking = true
             errorMessage = nil
             isExpanded = false
+            isDictionaryExpanded = false
             result = try await engine.translate(
                 TranslationRequest(
                     text: text,
                     origin: origin,
                     sourceLanguage: languages.0,
-                    targetLanguage: languages.1
+                    targetLanguage: languages.1,
+                    dictionaryOptions: preferences.dictionaryOptions
                 )
             )
         } catch is CancellationError {

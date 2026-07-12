@@ -3,10 +3,16 @@ import Foundation
 @MainActor
 final class TranslationEngine {
     private let dictionary: DictionaryLookingUp
+    private let systemDictionary: SystemDictionaryLookingUp
     private let appleTranslation: AppleTranslationService
 
-    init(dictionary: DictionaryLookingUp, appleTranslation: AppleTranslationService) {
+    init(
+        dictionary: DictionaryLookingUp,
+        systemDictionary: SystemDictionaryLookingUp = MacSystemDictionaryService(),
+        appleTranslation: AppleTranslationService
+    ) {
         self.dictionary = dictionary
+        self.systemDictionary = systemDictionary
         self.appleTranslation = appleTranslation
     }
 
@@ -16,9 +22,15 @@ final class TranslationEngine {
         guard text.count <= 1_000 else { throw TranslationFailure.inputTooLong }
         let startedAt = Date()
 
-        if request.sourceLanguage == .english,
-           let word = LanguageResolver.normalizedSingleEnglishWord(text),
-           let entry = dictionary.lookup(word),
+        let word = request.sourceLanguage == .english
+            ? LanguageResolver.normalizedSingleEnglishWord(text)
+            : nil
+        let entry = word.flatMap(dictionary.lookup)
+        let vocabularyTags = request.dictionaryOptions.showsExamTags ? entry?.tags ?? [] : []
+        let dictionarySections = supplementalSections(for: word, options: request.dictionaryOptions)
+
+        if request.dictionaryOptions.usesECDICT,
+           let entry,
            let primary = entry.meanings.first {
             return TranslationResult(
                 sourceText: text,
@@ -26,7 +38,9 @@ final class TranslationEngine {
                 alternatives: Array(entry.meanings.dropFirst().prefix(2)),
                 partOfSpeech: entry.partOfSpeech,
                 provider: "ECDICT",
-                latencyMilliseconds: Self.elapsedMilliseconds(since: startedAt)
+                latencyMilliseconds: Self.elapsedMilliseconds(since: startedAt),
+                dictionarySections: dictionarySections,
+                vocabularyTags: vocabularyTags
             )
         }
 
@@ -41,8 +55,28 @@ final class TranslationEngine {
             alternatives: [],
             partOfSpeech: nil,
             provider: "Apple 本地翻译",
-            latencyMilliseconds: Self.elapsedMilliseconds(since: startedAt)
+            latencyMilliseconds: Self.elapsedMilliseconds(since: startedAt),
+            dictionarySections: dictionarySections,
+            vocabularyTags: vocabularyTags
         )
+    }
+
+    private func supplementalSections(
+        for word: String?,
+        options: DictionaryLookupOptions
+    ) -> [DictionarySection] {
+        guard options.usesSystemDictionary,
+              let word,
+              let definition = systemDictionary.definition(for: word) else {
+            return []
+        }
+        return [
+            DictionarySection(
+                source: .systemDictionary,
+                title: "macOS 系统词典",
+                entries: [definition]
+            )
+        ]
     }
 
     private static func elapsedMilliseconds(since date: Date) -> Int {
