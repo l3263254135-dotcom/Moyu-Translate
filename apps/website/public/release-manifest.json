@@ -1,0 +1,24 @@
+{
+  "version": "0.2.0-beta.1",
+  "channel": "beta",
+  "publishedAt": "2026-07-15T00:00:00+08:00",
+  "releaseUrl": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases",
+  "requirements": {
+    "macos": "macOS 15+ · Apple Silicon / Intel",
+    "windows": "Windows 10 22H2 / Windows 11 · x64"
+  },
+  "downloads": {
+    "macos": {
+      "url": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases/download/v0.1.1/Moyu.Translate.dmg",
+      "sha256Url": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases/download/v0.1.1/Moyu.Translate.dmg.sha256",
+      "label": "macOS 稳定版 v0.1.1",
+      "architecture": "Universal"
+    },
+    "windowsExe": {
+      "url": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases",
+      "sha256Url": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases",
+      "label": "Windows Beta 发布页",
+      "architecture": "x64"
+    }
+  }
+}

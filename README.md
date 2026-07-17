@@ -1,63 +1,110 @@
 # Moyu Translate
 
-Moyu Translate 是一款原生 macOS 菜单栏翻译工具。长按 Option 约 350ms 即可在光标附近呼出输入框；日常以手动输入为主，需要读取图片、视频或游戏中的文字时，点击准星按钮即可识别呼出时的光标位置。
+Moyu Translate 是一款本地优先的 macOS 与 Windows 悬浮翻译工具。把光标停在文字上，长按 `Option` 或 `Alt` 约 350ms，即可在原位置附近查看精简释义；无需选中、复制或切换应用。
 
 ![Moyu Translate app icon](Assets/IconSource.png)
 
-## 功能
+> `v0.2.0-beta.1` 正在以 Tauri 2 + React + TypeScript 重构双平台客户端。原生 SwiftUI `v0.1.1` 稳定版继续保留在 `Sources/MoyuTranslate`，不会被 Beta 架构覆盖。
 
-- macOS 15+，Apple Silicon 与 Intel 通用构建
-- 58,000+ 常用英文词条使用内置精简 ECDICT，未命中时自动回退到 Apple 本地翻译
-- 主释义保持简洁，其他释义和 macOS 系统词典内容可分别折叠展开
-- 显示 Oxford 3000、IELTS、TOEFL、GRE 等词汇标签（来自 ECDICT 元数据）
-- 英文短语、句子及中译英使用 Apple Translation 本地语言包
-- 辅助功能文本优先，ScreenCaptureKit + Vision OCR 回退
-- 日间/夜间主题、窗口固定、多显示器与全屏 Space 支持
-- 菜单栏常驻，不占用 Dock，不保存查询历史
+## v0.2 Beta 功能
 
-## 本地构建
+- macOS 15+，Apple Silicon/Intel 通用构建；Windows 10 22H2、Windows 11 x64。
+- macOS 长按 Option、Windows 长按 Alt 呼出；Windows 会排除 AltGr 与 Ctrl+Alt。
+- 25 万条结构化离线英汉词条，包含分词性义项、词形、音标、例句、同反义词、词频和考试标签。
+- 英文单词优先查询 SQLite FTS5；短语、句子和中译英使用独立 Web Worker 中的 q8 本地模型。
+- 模型首次使用时按固定提交下载，支持断点续传并逐文件校验 SHA-256；校验后的缓存可断网翻译，查询文本不会发送到翻译 API。
+- macOS 使用辅助功能文本、ScreenCaptureKit 与 Vision；Windows 使用 UI Automation 与 Windows OCR。
+- 暖白/炭黑双主题、鱼干橙品牌色、窗口固定、系统朗读、本地收藏和默认关闭的本地历史。
+- Astro 中英双语官网、GitHub Release 下载清单、SEO、宣传运营 Markdown 与中文 PDF 手册。
 
-当前项目使用 SwiftPM，完整 Xcode 不是必需项；macOS Command Line Tools 即可构建。
+Oxford、Cambridge 等商业词典正文不会打包。`Oxford 3000`、`IELTS`、`TOEFL`、`GRE` 等仅作为学习/考试标签显示。
 
-```bash
-swift test
-./script/build_and_run.sh
-./script/build_and_run.sh --verify
+## 仓库结构
+
+```text
+apps/desktop          Tauri 2 + React 跨平台客户端
+apps/website          Astro 中英双语官网
+packages/contracts    共享请求、结果、模型与发布类型
+packages/ui           共享品牌 token 与 React UI 组件
+tools/dictionary      Dictionary v2 可复现构建工具
+tools/docs            宣传 PDF 生成工具
+Sources/MoyuTranslate 原生 macOS v0.1.1 稳定版
+docs/marketing        零基础多渠道宣传手册
 ```
 
-生成通用 DMG：
+## 本地开发
+
+环境：Node.js 22、pnpm 10、Rust stable；构建原生稳定版还需要 macOS 15 SDK/Swift 6。
 
 ```bash
-./script/package_release.sh
+pnpm install
+pnpm check
+pnpm dev
 ```
 
-输出位于 `dist/Moyu Translate.app`、`dist/Moyu Translate.dmg` 和对应 SHA-256 文件。
-
-重新生成完整精简 ECDICT（首次需要下载固定提交的源 CSV）：
+启动 Tauri 开发版：
 
 ```bash
-./script/build_dictionary.py
+pnpm tauri dev
 ```
 
-仓库提交的 v0.1.1 数据库由固定提交的完整 ECDICT CSV 筛选生成，并用项目维护的常用词条校正高频释义。原始 63MB CSV 不提交，来源提交、SHA-256 和唯一词条数记录在 `Sources/MoyuTranslate/Resources/ECDICT_SOURCE.txt`。运行时未命中的词条仍由 Apple 本地语言包翻译。
-
-重新生成本地图标资产：
+构建 macOS 通用 DMG：
 
 ```bash
-swift script/generate_icons.swift
-./script/build_icns.sh
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
+pnpm --filter @moyu/desktop tauri build --target universal-apple-darwin --bundles dmg
 ```
 
-image-2 的最终替换提示词保存在 `Assets/IMAGEGEN_PROMPT.md`。当前环境未配置 `OPENAI_API_KEY`，所以仓库内图标由本地 Core Graphics 绘制脚本生成，可重复构建。
+Windows x64 安装包需在 Windows 上构建：
 
-## 权限与隐私
+```powershell
+pnpm --filter @moyu/desktop tauri build --bundles nsis,msi
+```
 
-Moyu Translate 需要辅助功能权限来监听全局 Option 并读取可访问文本，需要屏幕录制权限来识别图片、视频和游戏画面。应用还可读取“词典”App 中已启用的 macOS 本地词典；不会复制或上传词典内容。所有识别、查词与翻译均在本机执行；应用不包含分析、账号、云端 API、历史或收藏功能。
+GitHub Actions 会同时生成 Universal DMG、NSIS EXE、MSI 和 SHA-256；核心功能未通过双平台矩阵时不得将 Beta 提升为正式版。
 
-Oxford、Cambridge 等商业词典正文不随应用分发。macOS 系统词典可能包含 Oxford，实际来源取决于用户系统版本与“词典”App 设置；应用统一如实标记为“macOS 系统词典”。IELTS、TOEFL 等显示为考试词汇标签，不标记为独立词典。
+## Dictionary v2
 
-完整安装与操作说明见 [中文用户指南](docs/USER_GUIDE.zh-CN.md)。
+仓库提交的 `dictionary-v2.sqlite` 由固定版本 ECDICT、WordNet 3.1、CMU Pronouncing Dictionary 和项目人工校正层生成：
 
-## 许可
+- 250,000 个结构化词条
+- 126,052 条 CMUdict 发音
+- 73,832 个 WordNet 匹配词条
+- SHA-256：`70e7167d81b44d36be40ab0a8487b041bc47a12866553556bce77aad22ec3db3`
 
-项目源码使用 [MIT License](LICENSE)。ECDICT 许可与来源见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+```bash
+pnpm dictionary:test
+pnpm dictionary:v2
+```
+
+完整来源、固定提交和许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+## 离线模型
+
+两个 q8 语言方向都固定到不可变的 Transformers.js 模型提交：
+
+- 英文 → 中文：`Xenova/opus-mt-en-zh@046f55aec303cdee3e0318604406d4df20f1e8ea`
+- 中文 → 英文：`Xenova/opus-mt-zh-en@39d480d52a9ea3065a1f117adfe4dbc55de10e6f`
+
+运行时只把 `config`、tokenizer、q8 encoder 和 merged decoder 六个必需文件写入专用缓存。清单固定每个文件的字节数与 SHA-256；中断数据保存在 IndexedDB，重新下载时使用 HTTP Range 续传。设置页可单独删除任一方向的语言包。
+
+## 隐私与限制
+
+- 单词数据库、OCR、收藏和可选历史均在当前设备处理。
+- 历史默认关闭，开启后最多保留 500 条，可随用户数据库删除。
+- q8 模型首次下载需要网络；文件校验通过后不依赖云端翻译服务。
+- DRM/系统保护内容无法截图时会明确报错。
+- Windows 独占全屏游戏不保证 OCR；优先使用无边框窗口模式。
+- Beta 为 macOS ad-hoc 签名和未正式签名的 Windows 安装器，首次打开请参考用户指南处理 Gatekeeper/SmartScreen。
+
+操作与权限说明见 [v0.2 中文用户指南](docs/USER_GUIDE_V2.zh-CN.md)，双平台发布门禁见 [功能一致性矩阵](docs/PARITY_MATRIX.md)。
+
+## 宣传资料
+
+- Markdown 总入口：[docs/marketing/README.md](docs/marketing/README.md)
+- 中文 PDF：[docs/Moyu-Translate-Marketing-Guide-zh-CN.pdf](docs/Moyu-Translate-Marketing-Guide-zh-CN.pdf)
+- 官网源码：`apps/website`
+
+## License
+
+项目源码使用 [MIT License](LICENSE)。第三方数据、模型和依赖按各自许可证使用。

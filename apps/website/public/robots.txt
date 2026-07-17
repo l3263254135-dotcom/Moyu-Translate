@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://l3263254135-dotcom.github.io/Moyu-Translate/sitemap-index.xml

@@ -1,0 +1,126 @@
+import { Badge, Disclosure } from "@moyu/ui";
+import { Copy, Star, Volume2 } from "lucide-react";
+import { useState } from "react";
+import { speak } from "../services/bridge";
+import { useAppStore } from "../store/useAppStore";
+
+export function ResultView() {
+  const result = useAppStore((state) => state.result);
+  const favorite = useAppStore((state) => state.favorite);
+  const toggleFavorite = useAppStore((state) => state.toggleFavorite);
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+
+  if (!result) return null;
+
+  const primarySense = result.senses[0];
+  const additionalSenses = result.senses.slice(1);
+  const setSection = (section: string) => setOpen((value) => ({ ...value, [section]: !value[section] }));
+
+  return (
+    <div className="result" aria-live="polite">
+      <div className="result__head">
+        <div>
+          <div className="result__word-row">
+            <h2>{result.headword ?? result.sourceText}</h2>
+            <button className="icon-action" type="button" onClick={() => speak(result.headword ?? result.sourceText)} aria-label="朗读">
+              <Volume2 size={15} />
+            </button>
+          </div>
+          {result.pronunciations.length > 0 && (
+            <div className="pronunciations">
+              {result.pronunciations.map((item) => (
+                <span key={`${item.locale}-${item.ipa}`}>
+                  {item.locale === "en-GB" ? "UK" : item.locale === "en-US" ? "US" : "IPA"} /{item.ipa}/
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="result__actions">
+          <button className="icon-action" type="button" onClick={() => navigator.clipboard.writeText(result.primaryText)} aria-label="复制主释义">
+            <Copy size={15} />
+          </button>
+          <button className={`icon-action ${favorite ? "is-active" : ""}`} type="button" onClick={toggleFavorite} aria-label="收藏">
+            <Star size={15} fill={favorite ? "currentColor" : "none"} />
+          </button>
+        </div>
+      </div>
+
+      <div className="primary-sense">
+        {primarySense && <span className="part-of-speech">{primarySense.partOfSpeech}</span>}
+        <p>{primarySense?.meanings[0] ?? result.primaryText}</p>
+      </div>
+
+      {result.vocabularyTags.length > 0 && (
+        <div className="tag-strip">
+          {result.vocabularyTags.map((tag) => <Badge key={tag}>{tag}</Badge>)}
+        </div>
+      )}
+
+      {additionalSenses.length > 0 && (
+        <Disclosure title="更多释义" detail={additionalSenses.length} open={Boolean(open.senses)} onToggle={() => setSection("senses")}>
+          <div className="sense-list">
+            {additionalSenses.map((sense) => (
+              <div className="sense-row" key={sense.id}>
+                <span>{sense.partOfSpeech}</span>
+                <p>{sense.meanings.join("；")}</p>
+              </div>
+            ))}
+          </div>
+        </Disclosure>
+      )}
+
+      {result.forms.length > 0 && (
+        <Disclosure title="词形变化" detail={result.forms.length} open={Boolean(open.forms)} onToggle={() => setSection("forms")}>
+          <dl className="form-list">
+            {result.forms.map((form) => <div key={`${form.label}-${form.value}`}><dt>{form.label}</dt><dd>{form.value}</dd></div>)}
+          </dl>
+        </Disclosure>
+      )}
+
+      {result.examples.length > 0 && (
+        <Disclosure title="例句" detail={result.examples.length} open={Boolean(open.examples)} onToggle={() => setSection("examples")}>
+          <div className="example-list">
+            {result.examples.map((example) => (
+              <figure key={example.id}>
+                <blockquote>{example.english}</blockquote>
+                {example.chinese && <figcaption>{example.chinese}</figcaption>}
+              </figure>
+            ))}
+          </div>
+        </Disclosure>
+      )}
+
+      {result.relations.length > 0 && (
+        <Disclosure title="同反义词" detail={result.relations.length} open={Boolean(open.relations)} onToggle={() => setSection("relations")}>
+          <div className="relation-list">
+            {result.relations.map((relation) => (
+              <div key={relation.type}>
+                <span>{relation.type === "synonym" ? "同义" : "反义"}</span>
+                <p>{relation.words.join(" · ")}</p>
+              </div>
+            ))}
+          </div>
+        </Disclosure>
+      )}
+
+      {result.sources.length > 0 && (
+        <Disclosure title="更多来源" detail={result.sources.length} open={Boolean(open.sources)} onToggle={() => setSection("sources")}>
+          <div className="source-list">
+            {result.sources.map((source) => (
+              <div key={source.id}>
+                <strong>{source.title}</strong>
+                {source.detail && <span>{source.detail}</span>}
+              </div>
+            ))}
+          </div>
+        </Disclosure>
+      )}
+
+      <footer className="result__footer">
+        <span>{result.provider}</span>
+        <span>{result.latencyMilliseconds}ms</span>
+      </footer>
+    </div>
+  );
+}

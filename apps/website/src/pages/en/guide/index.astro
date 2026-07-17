@@ -1,0 +1,16 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { withBase } from "../../../lib/paths";
+const base = import.meta.env.BASE_URL;
+---
+<BaseLayout lang="en" title="Moyu Translate Guide" description="Install and use Moyu Translate on macOS and Windows." path="/en/guide/">
+  <main class="docs-page">
+    <a class="docs-back" href={withBase(base, "en")}>← Back to Moyu Translate</a>
+    <h1>Getting started</h1>
+    <p class="docs-lead">Install, allow local capture, then hover and hold Option or Alt.</p>
+    <section><h2>1. Install</h2><p>Download the DMG for macOS or the EXE for Windows from GitHub Releases. Verify the published SHA-256 before opening an unsigned beta.</p></section>
+    <section><h2>2. Allow access</h2><p>macOS requires Accessibility and Screen Recording. Windows uses UI Automation and local screen capture.</p></section>
+    <section><h2>3. Translate</h2><p>Hover over text and hold Option on macOS or Alt on Windows. You can also type directly in the floating panel.</p></section>
+    <section><h2>4. Work offline</h2><p>Word lookup works immediately. Download each sentence language pack once to translate offline.</p></section>
+  </main>
+</BaseLayout>

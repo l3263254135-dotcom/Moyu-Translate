@@ -1,0 +1,74 @@
+:root {
+  color-scheme: light;
+  --moyu-canvas: #f8f8f5;
+  --moyu-surface: #ffffff;
+  --moyu-surface-raised: #ffffff;
+  --moyu-ink: #24221e;
+  --moyu-muted: #686a66;
+  --moyu-faint: #979994;
+  --moyu-line: #e5e6e1;
+  --moyu-accent: #f39a3c;
+  --moyu-accent-strong: #dc7623;
+  --moyu-accent-soft: #fff0df;
+  --moyu-danger: #c84c42;
+  --moyu-success: #3b8a62;
+  --moyu-shadow: 0 24px 80px rgb(48 35 20 / 14%);
+  --moyu-radius-sm: 8px;
+  --moyu-radius-md: 14px;
+  --moyu-radius-lg: 22px;
+  --moyu-font-display: "Avenir Next", "SF Pro Display", "Segoe UI Variable Display", sans-serif;
+  --moyu-font-body: Inter, "SF Pro Text", "Segoe UI Variable Text", "PingFang SC", sans-serif;
+  --moyu-font-reading: Charter, "Source Han Serif SC", "Songti SC", serif;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --moyu-canvas: #171a19;
+  --moyu-surface: #1d211f;
+  --moyu-surface-raised: #252927;
+  --moyu-ink: #f5f1e9;
+  --moyu-muted: #b6afa4;
+  --moyu-faint: #7e7971;
+  --moyu-line: #363b38;
+  --moyu-accent: #f4a04b;
+  --moyu-accent-strong: #ffb15f;
+  --moyu-accent-soft: #3c3023;
+  --moyu-danger: #ed746a;
+  --moyu-success: #6ec79a;
+  --moyu-shadow: 0 28px 90px rgb(0 0 0 / 42%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--moyu-font-body);
+  color: var(--moyu-ink);
+  background: var(--moyu-canvas);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--moyu-accent);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

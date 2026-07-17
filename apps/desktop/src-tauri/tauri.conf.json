@@ -1,0 +1,71 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Moyu Translate Beta",
+  "version": "0.2.0-beta.1",
+  "identifier": "com.l3263254135.moyutranslate.beta",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "label": "panel",
+        "title": "Moyu Translate",
+        "width": 420,
+        "height": 480,
+        "minWidth": 420,
+        "maxWidth": 420,
+        "minHeight": 160,
+        "maxHeight": 480,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "visibleOnAllWorkspaces": true,
+        "resizable": false,
+        "skipTaskbar": true,
+        "shadow": false,
+        "visible": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' ipc: http://ipc.localhost; img-src 'self' asset: http://asset.localhost data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' ipc: http://ipc.localhost https://github.com https://objects.githubusercontent.com https://huggingface.co https://cdn-lfs.huggingface.co https://hf-mirror.com https://cas-bridge.xethub.hf.co; worker-src 'self' blob:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["dmg", "nsis", "msi"],
+    "category": "Utility",
+    "copyright": "Copyright © 2026 l3263254135-dotcom",
+    "shortDescription": "Local-first hover translator",
+    "longDescription": "Hover over text and hold Option or Alt to translate locally without interrupting your workflow.",
+    "resources": [
+      "resources/dictionary-v2.sqlite",
+      "native/windows/MoyuCapture.ps1"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "15.0",
+      "entitlements": "Entitlements.plist",
+      "signingIdentity": "-"
+    },
+    "windows": {
+      "webviewInstallMode": { "type": "embedBootstrapper" },
+      "nsis": {
+        "displayLanguageSelector": true,
+        "installerIcon": "icons/icon.ico",
+        "languages": ["SimpChinese", "English"]
+      }
+    }
+  }
+}
