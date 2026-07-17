@@ -1,0 +1,16 @@
+packages:
+  - apps/*
+  - packages/*
+
+allowBuilds:
+  esbuild: true
+  onnxruntime-node: true
+  protobufjs: true
+  sharp: true
+
+onlyBuiltDependencies:
+  - '@parcel/watcher'
+  - esbuild
+  - onnxruntime-node
+  - protobufjs
+  - sharp

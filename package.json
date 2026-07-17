@@ -1,0 +1,24 @@
+{
+  "name": "moyu-translate-monorepo",
+  "version": "0.2.0-beta.1",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.12.1",
+  "scripts": {
+    "dev": "pnpm --filter @moyu/desktop dev",
+    "dev:site": "pnpm --filter @moyu/website dev",
+    "tauri": "pnpm --filter @moyu/desktop tauri",
+    "build": "pnpm -r --if-present build",
+    "build:site": "pnpm --filter @moyu/website build",
+    "dictionary:v2": "python3 tools/dictionary/build_dictionary_v2.py",
+    "dictionary:test": "python3 -m unittest tools.dictionary.test_build_dictionary_v2",
+    "test": "pnpm -r --if-present test",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "check": "pnpm dictionary:test && pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

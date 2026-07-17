@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0-beta.1 - 2026-07-15
+
+- Added the Tauri 2 + React + TypeScript macOS/Windows client while preserving native macOS v0.1.1.
+- Added a 250,000-entry Dictionary v2 generated from pinned ECDICT, WordNet and CMUdict sources.
+- Added structured pronunciation, part-of-speech senses, forms, examples, relations and vocabulary tags.
+- Added pinned q8 Transformers.js language-model workers with resumable downloads, per-file SHA-256 verification, progress, deletion and local WebView caching.
+- Added macOS Accessibility/ScreenCaptureKit/Vision capture sidecar and Windows Alt/UI Automation/OCR adapters.
+- Added searchable local favorites, opt-in searchable/clearable history, themes, pinning, launch-at-login and system speech.
+- Added the bilingual Astro website, release manifest synchronization, SEO and GitHub Pages workflows.
+- Added beginner marketing guides, templates, a 30-day launch plan and a generated Chinese PDF handbook.
+- Added macOS/Windows CI and prerelease workflows for DMG, NSIS EXE, MSI and checksums.
+
 ## 0.1.1 - 2026-07-12
 
 - Expanded the bundled ECDICT database to more than 58,000 common entries.

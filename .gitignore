@@ -6,3 +6,13 @@ dist/
 tmp/
 __pycache__/
 Sources/MoyuTranslate/Resources/dictionary.sqlite-journal
+node_modules/
+.pnpm-store/
+apps/*/dist/
+apps/desktop/src-tauri/target/
+apps/desktop/src-tauri/gen/
+apps/website/.astro/
+coverage/
+output/
+.env.local
+*.tsbuildinfo

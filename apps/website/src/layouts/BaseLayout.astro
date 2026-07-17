@@ -1,0 +1,52 @@
+---
+import "@moyu/ui/theme.css";
+import "../styles/site.css";
+import { withBase } from "../lib/paths";
+
+interface Props {
+  lang: "zh-CN" | "en";
+  title: string;
+  description: string;
+  path?: string;
+}
+const { lang, title, description, path = "/" } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const siteRoot = new URL(withBase(base), Astro.site ?? Astro.url);
+const canonical = new URL(path.replace(/^\/+/, ""), siteRoot);
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Moyu Translate",
+  applicationCategory: "UtilitiesApplication",
+  operatingSystem: "macOS 15+, Windows 10/11",
+  description,
+  url: canonical.toString(),
+  downloadUrl: "https://github.com/l3263254135-dotcom/Moyu-Translate/releases",
+  offers: { "@type": "Offer", price: "0", priceCurrency: "CNY" },
+};
+---
+<!doctype html>
+<html lang={lang}>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="keywords" content="Moyu Translate,悬浮翻译,屏幕翻译,离线翻译,Windows翻译,macOS翻译,OCR翻译,hover translate" />
+    <meta name="theme-color" content="#fffdf9" />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang="zh-CN" href={new URL(withBase(base), Astro.site ?? Astro.url)} />
+    <link rel="alternate" hreflang="en" href={new URL(withBase(base, "en"), Astro.site ?? Astro.url)} />
+    <link rel="alternate" hreflang="x-default" href={new URL(withBase(base), Astro.site ?? Astro.url)} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL(`${withBase(base)}og.png`, Astro.site ?? Astro.url)} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(structuredData)} />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
