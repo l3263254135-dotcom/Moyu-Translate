@@ -20,6 +20,7 @@ export function App() {
   const result = useAppStore((state) => state.result);
   const settingsOpen = useAppStore((state) => state.settingsOpen);
   const libraryOpen = useAppStore((state) => state.libraryOpen);
+  const vocabularyStats = useAppStore((state) => state.vocabularyStats);
   const setSettingsOpen = useAppStore((state) => state.setSettingsOpen);
   const setLibraryOpen = useAppStore((state) => state.setLibraryOpen);
   const toggleTheme = useAppStore((state) => state.toggleTheme);
@@ -33,7 +34,7 @@ export function App() {
       : preferences.theme;
     document.documentElement.dataset.theme = effective;
   }, [preferences.theme]);
-  useEffect(() => { if (!settingsOpen) input.current?.focus(); }, [settingsOpen]);
+  useEffect(() => { if (!settingsOpen && !libraryOpen) input.current?.focus(); }, [libraryOpen, settingsOpen]);
   useEffect(() => {
     if (!isTauriRuntime()) return;
     let unlistenFocus: (() => void) | undefined;
@@ -74,7 +75,11 @@ export function App() {
         </div>
         <div className="panel-tools">
           <ToolButton label="读取光标文字" onClick={capture}><Crosshair /></ToolButton>
-          <ToolButton label="收藏与历史" onClick={() => setLibraryOpen(true)}><BookMarked /></ToolButton>
+          <ToolButton
+            label={vocabularyStats.dueToday > 0 ? `生词本与历史，今日待复习 ${vocabularyStats.dueToday} 个` : "生词本与历史"}
+            badge={vocabularyStats.dueToday}
+            onClick={() => setLibraryOpen(true)}
+          ><BookMarked /></ToolButton>
           <ToolButton label="切换主题" onClick={toggleTheme}>{preferences.theme === "dark" ? <Sun /> : <Moon />}</ToolButton>
           <ToolButton label={preferences.pinned ? "取消固定" : "固定窗口"} active={preferences.pinned} onClick={togglePinned}><Pin /></ToolButton>
           <ToolButton label="设置" onClick={() => setSettingsOpen(true)}><Settings /></ToolButton>
@@ -108,6 +113,11 @@ export function App() {
   );
 }
 
-function ToolButton({ label, active = false, onClick, children }: { label: string; active?: boolean; onClick: () => void | Promise<void>; children: ReactNode }) {
-  return <button className={`tool-button ${active ? "is-active" : ""}`} type="button" aria-label={label} title={label} onClick={() => void onClick()}>{children}</button>;
+function ToolButton({ label, badge = 0, active = false, onClick, children }: { label: string; badge?: number; active?: boolean; onClick: () => void | Promise<void>; children: ReactNode }) {
+  return (
+    <button className={`tool-button ${active ? "is-active" : ""}`} type="button" aria-label={label} title={label} onClick={() => void onClick()}>
+      {children}
+      {badge > 0 && <span className="tool-button__badge" aria-hidden="true">{badge > 99 ? "99+" : badge}</span>}
+    </button>
+  );
 }

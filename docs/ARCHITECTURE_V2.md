@@ -15,7 +15,9 @@ The React surface owns layout and transient interaction state. Rust owns SQLite 
 
 `TranslationRequest` first enters the Rust command layer. A normalized single English word queries Dictionary v2. Other text requires a verified local language pack. Translation results always use the shared `TranslationResult` contract, so both platforms render identical sections.
 
-User data is separate from the bundled dictionary. `moyu-user.sqlite` stores preferences and favorites. History writes occur only when `historyEnabled` is true and are capped at 500 records.
+User data is separate from the bundled dictionary. `moyu-user.sqlite` stores preferences, vocabulary entries and review progress. `vocabulary_entries` uses a normalized English term key, fixed review stages and UTC due timestamps. A one-time transaction migrates beta.1 favorites while retaining the old table for rollback. History writes occur only when `historyEnabled` is true and are capped at 500 records.
+
+The shared React layer uses the bundled Compromise parser to reject contextual subject-predicate sentences before requesting a `VocabularyCandidate` from Rust. The Rust classifier then uses the offline dictionary's primary and alternate parts of speech as a second validation layer, including during beta.1 favorite migration. This keeps ambiguous noun phrases such as `customer needs analysis` and `operations research method` reviewable while rejecting contextual verbs such as `went`, `flew` and `book`. Review grading is serialized through the user-store mutex: `known` advances through 1/3/7/14/30/60-day intervals, while `again` resets the stage and schedules the entry ten minutes later.
 
 ## Dictionary build
 

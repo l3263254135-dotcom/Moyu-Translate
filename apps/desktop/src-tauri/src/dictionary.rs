@@ -165,6 +165,244 @@ impl DictionaryStore {
         approximate.truncate(limit);
         Ok(approximate.into_iter().map(|(_, _, word)| word).collect())
     }
+
+    pub fn is_reviewable_term(&self, input: &str) -> Result<bool> {
+        let Some(connection) = &self.connection else {
+            return Ok(false);
+        };
+        let normalized = normalize_term(input);
+        if !is_basic_vocabulary_term(&normalized) {
+            return Ok(false);
+        }
+        let words = normalized.split(' ').collect::<Vec<_>>();
+        if words.len() == 1 {
+            return Ok(true);
+        }
+        if looks_like_personal_clause(&words) || contains_finite_auxiliary(&words) {
+            return Ok(false);
+        }
+        let original_words = input.split_whitespace().collect::<Vec<_>>();
+        for index in 1..words.len() {
+            if words[index - 1] == "to" {
+                continue;
+            }
+            let role = token_role(connection, words[index])?;
+            if role.primary == TokenRole::Verb {
+                return Ok(false);
+            }
+            let sentence_case = original_words[0]
+                .chars()
+                .next()
+                .is_some_and(char::is_uppercase)
+                && !original_words[1]
+                    .chars()
+                    .next()
+                    .is_some_and(char::is_uppercase);
+            let lowercase_clause_shape = words.len() >= 4
+                && original_words.iter().all(|word| {
+                    word.chars()
+                        .next()
+                        .is_some_and(|character| !character.is_uppercase())
+                });
+            let ambiguous_sentence = index == 1
+                && (sentence_case || lowercase_clause_shape)
+                && role.has_verb
+                && !is_noun_compound_exception(&words);
+            if ambiguous_sentence {
+                return Ok(false);
+            }
+        }
+        Ok(true)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum TokenRole {
+    Verb,
+    Other,
+    Unknown,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+struct TokenRoleInfo {
+    primary: TokenRole,
+    has_verb: bool,
+}
+
+fn token_role(connection: &Connection, word: &str) -> Result<TokenRoleInfo> {
+    let direct = {
+        let mut statement = connection.prepare(
+            "SELECT COALESCE(s.part_of_speech, ''), e.primary_meaning
+             FROM entries e
+             LEFT JOIN senses s ON s.entry_id = e.id
+             WHERE e.normalized = ?1
+             ORDER BY s.priority, s.id",
+        )?;
+        let rows = statement.query_map(params![word], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?;
+        rows.filter_map(std::result::Result::ok).collect::<Vec<_>>()
+    };
+    let entries = if direct.is_empty() {
+        let mut statement = connection.prepare(
+            "SELECT COALESCE(s.part_of_speech, ''), e.primary_meaning
+                 FROM forms f
+                 JOIN entries e ON e.id = f.entry_id
+                 LEFT JOIN senses s ON s.entry_id = e.id
+                 WHERE lower(f.value) = ?1
+                 ORDER BY f.priority, s.priority, s.id",
+        )?;
+        let rows = statement.query_map(params![word], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?;
+        rows.filter_map(std::result::Result::ok).collect::<Vec<_>>()
+    } else {
+        direct
+    };
+    if entries.is_empty() {
+        return Ok(TokenRoleInfo {
+            primary: TokenRole::Unknown,
+            has_verb: false,
+        });
+    }
+    let is_verb = |part_of_speech: &str, meaning: &str| {
+        let part_of_speech = part_of_speech.to_ascii_lowercase();
+        part_of_speech.starts_with('v')
+            || part_of_speech.contains("vt.")
+            || part_of_speech.contains("vi.")
+            || part_of_speech.contains("aux.")
+            || meaning.contains("过去式")
+            || meaning.contains("过去分词")
+    };
+    Ok(TokenRoleInfo {
+        primary: if is_verb(&entries[0].0, &entries[0].1) {
+            TokenRole::Verb
+        } else {
+            TokenRole::Other
+        },
+        has_verb: entries
+            .iter()
+            .any(|(part_of_speech, meaning)| is_verb(part_of_speech, meaning)),
+    })
+}
+
+fn is_noun_compound_exception(words: &[&str]) -> bool {
+    if words.len() < 3 {
+        return false;
+    }
+    let headword = words[words.len() - 1];
+    [
+        "analysis",
+        "assessment",
+        "management",
+        "research",
+        "method",
+        "model",
+        "system",
+        "systems",
+        "architecture",
+        "design",
+        "strategy",
+        "planning",
+        "process",
+        "policy",
+        "service",
+        "services",
+        "framework",
+        "development",
+        "operations",
+        "requirements",
+        "study",
+        "review",
+        "report",
+        "guide",
+        "tool",
+        "tools",
+    ]
+    .iter()
+    .any(|ending| headword.ends_with(ending))
+}
+
+fn looks_like_personal_clause(words: &[&str]) -> bool {
+    if words.len() < 2 {
+        return false;
+    }
+    let subject = matches!(
+        words[0],
+        "i" | "you" | "he" | "she" | "it" | "we" | "they" | "there"
+    );
+    let phrase_joiner = matches!(
+        words[1],
+        "and"
+            | "or"
+            | "with"
+            | "without"
+            | "of"
+            | "for"
+            | "to"
+            | "from"
+            | "in"
+            | "on"
+            | "at"
+            | "by"
+            | "the"
+            | "a"
+            | "an"
+    );
+    subject && !phrase_joiner
+}
+
+fn contains_finite_auxiliary(words: &[&str]) -> bool {
+    words.iter().skip(1).any(|word| {
+        matches!(
+            *word,
+            "am" | "is"
+                | "are"
+                | "was"
+                | "were"
+                | "has"
+                | "have"
+                | "had"
+                | "do"
+                | "does"
+                | "did"
+                | "can"
+                | "could"
+                | "will"
+                | "would"
+                | "shall"
+                | "should"
+                | "may"
+                | "might"
+                | "must"
+        )
+    })
+}
+
+fn normalize_term(value: &str) -> String {
+    value
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
+}
+
+fn is_basic_vocabulary_term(value: &str) -> bool {
+    if value.is_empty() || value.len() > 80 {
+        return false;
+    }
+    let words = value.split(' ').collect::<Vec<_>>();
+    !words.is_empty()
+        && words.len() <= 8
+        && words.into_iter().all(|word| {
+            let bytes = word.as_bytes();
+            !bytes.is_empty()
+                && bytes.first().is_some_and(u8::is_ascii_alphabetic)
+                && bytes.last().is_some_and(u8::is_ascii_alphabetic)
+                && bytes
+                    .iter()
+                    .all(|byte| byte.is_ascii_alphabetic() || *byte == b'\'' || *byte == b'-')
+        })
 }
 
 fn query_pronunciations(connection: &Connection, entry_id: i64) -> Result<Vec<Pronunciation>> {
@@ -266,7 +504,9 @@ fn edit_distance(left: &str, right: &str) -> usize {
 
 #[cfg(test)]
 mod tests {
-    use super::{edit_distance, normalize_word};
+    use std::path::PathBuf;
+
+    use super::{edit_distance, normalize_word, DictionaryStore};
 
     #[test]
     fn normalizes_case_and_apostrophes() {
@@ -278,5 +518,46 @@ mod tests {
     fn ranks_small_spelling_errors() {
         assert_eq!(edit_distance("abilty", "ability"), 1);
         assert_eq!(edit_distance("translate", "translation"), 3);
+    }
+
+    #[test]
+    fn distinguishes_phrases_from_common_clause_shapes_with_offline_parts_of_speech() {
+        let dictionary = DictionaryStore::open(
+            &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources/dictionary-v2.sqlite"),
+        );
+        for phrase in [
+            "take a break",
+            "distributed systems architecture",
+            "United States government",
+            "customer needs analysis",
+            "operations research method",
+            "machine learning model",
+            "natural language processing",
+        ] {
+            assert!(
+                dictionary.is_reviewable_term(phrase).expect("phrase check"),
+                "expected phrase: {phrase}"
+            );
+        }
+        for sentence in [
+            "I want to go home",
+            "Birds eat small insects",
+            "Children enjoy sunny days",
+            "Moyu makes translation easy",
+            "John went home early",
+            "The child went home",
+            "The young child went home",
+            "A small bird flew away",
+            "Dogs book flights online",
+            "dogs book flights online",
+            "people fish in rivers",
+        ] {
+            assert!(
+                !dictionary
+                    .is_reviewable_term(sentence)
+                    .expect("sentence check"),
+                "expected sentence: {sentence}"
+            );
+        }
     }
 }

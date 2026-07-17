@@ -4,6 +4,7 @@ use crate::{
     models::{
         AppPreferences, DictionaryOptions, DictionarySense, DictionarySourceInfo,
         PlatformCapabilities, SavedTranslation, TranslationRequest, TranslationResult,
+        VocabularyCandidate, VocabularyEntry, VocabularyStats,
     },
     platform,
     state::AppState,
@@ -27,7 +28,7 @@ pub fn translate(
         return Err("单次查询最多支持 1,000 个字符".into());
     }
     if request.source_language == "en"
-        && is_single_word(text)
+        && is_dictionary_lookup_candidate(text)
         && request.dictionary_options.use_offline_dictionary
     {
         if let Some(mut result) = state
@@ -137,11 +138,25 @@ pub fn toggle_favorite(
     favorite: bool,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    state
-        .user_store
-        .lock()
-        .toggle_favorite(&result, favorite)
-        .map_err(|error| error.to_string())
+    let candidate = vocabulary_candidate_for_result(&result, &state)?;
+    if favorite {
+        let candidate = candidate.ok_or("生词本仅支持英文单词或短语")?;
+        state
+            .user_store
+            .lock()
+            .save_vocabulary(&candidate)
+            .map(|_| ())
+            .map_err(|error| error.to_string())
+    } else {
+        let term = candidate
+            .map(|candidate| candidate.term)
+            .unwrap_or_else(|| result.headword.unwrap_or(result.source_text));
+        state
+            .user_store
+            .lock()
+            .remove_vocabulary(&term, None)
+            .map_err(|error| error.to_string())
+    }
 }
 
 #[tauri::command]
@@ -150,6 +165,105 @@ pub fn is_favorite(source_text: String, state: State<'_, AppState>) -> Result<bo
         .user_store
         .lock()
         .is_favorite(&source_text)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn vocabulary_candidate(
+    result: TranslationResult,
+    state: State<'_, AppState>,
+) -> Result<Option<VocabularyCandidate>, String> {
+    vocabulary_candidate_for_result(&result, &state)
+}
+
+#[tauri::command]
+pub fn save_vocabulary(
+    candidate: VocabularyCandidate,
+    state: State<'_, AppState>,
+) -> Result<VocabularyEntry, String> {
+    if !state
+        .dictionary
+        .lock()
+        .is_reviewable_term(&candidate.term)
+        .map_err(|error| error.to_string())?
+    {
+        return Err("生词本仅支持英文单词或短语，完整句子不会加入".into());
+    }
+    state
+        .user_store
+        .lock()
+        .save_vocabulary(&candidate)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn remove_vocabulary(
+    term: String,
+    entry_id: Option<String>,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    state
+        .user_store
+        .lock()
+        .remove_vocabulary(&term, entry_id.as_deref())
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn is_in_vocabulary(term: String, state: State<'_, AppState>) -> Result<bool, String> {
+    state
+        .user_store
+        .lock()
+        .is_in_vocabulary(&term)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn list_vocabulary(
+    query: String,
+    filter: String,
+    limit: usize,
+    state: State<'_, AppState>,
+) -> Result<Vec<VocabularyEntry>, String> {
+    state
+        .user_store
+        .lock()
+        .list_vocabulary(&query, &filter, limit)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn due_vocabulary(
+    limit: usize,
+    state: State<'_, AppState>,
+) -> Result<Vec<VocabularyEntry>, String> {
+    state
+        .user_store
+        .lock()
+        .due_vocabulary(limit)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn vocabulary_stats(state: State<'_, AppState>) -> Result<VocabularyStats, String> {
+    state
+        .user_store
+        .lock()
+        .vocabulary_stats()
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub fn review_vocabulary(
+    term: String,
+    rating: String,
+    reviewed_at: String,
+    state: State<'_, AppState>,
+) -> Result<VocabularyEntry, String> {
+    state
+        .user_store
+        .lock()
+        .review_vocabulary(&term, &rating, &reviewed_at)
         .map_err(|error| error.to_string())
 }
 
@@ -188,9 +302,60 @@ pub fn clear_history(state: State<'_, AppState>) -> Result<(), String> {
         .map_err(|error| error.to_string())
 }
 
-fn is_single_word(text: &str) -> bool {
-    text.chars()
-        .all(|character| character.is_ascii_alphabetic() || character == '\'' || character == '-')
+fn vocabulary_candidate_for_result(
+    result: &TranslationResult,
+    state: &State<'_, AppState>,
+) -> Result<Option<VocabularyCandidate>, String> {
+    let source = result.source_text.trim();
+    let source_is_chinese = source
+        .chars()
+        .any(|character| ('\u{3400}'..='\u{9fff}').contains(&character));
+    let dictionary = state.dictionary.lock();
+    let preferred = if source_is_chinese {
+        result.primary_text.as_str()
+    } else if result
+        .headword
+        .as_deref()
+        .is_some_and(|headword| dictionary.is_reviewable_term(headword).unwrap_or(false))
+    {
+        result.headword.as_deref().unwrap_or(source)
+    } else {
+        source
+    };
+    let term = preferred.split_whitespace().collect::<Vec<_>>().join(" ");
+    if !dictionary
+        .is_reviewable_term(&term)
+        .map_err(|error| error.to_string())?
+    {
+        return Ok(None);
+    }
+    Ok(Some(VocabularyCandidate {
+        term,
+        definition: if source_is_chinese {
+            source.to_string()
+        } else {
+            result.primary_text.trim().to_string()
+        },
+        original_source_text: source.to_string(),
+        result: result.clone(),
+    }))
+}
+
+fn is_dictionary_lookup_candidate(text: &str) -> bool {
+    let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    let words = normalized.split(' ').collect::<Vec<_>>();
+    !normalized.is_empty()
+        && normalized.len() <= 80
+        && words.len() <= 8
+        && words.into_iter().all(|word| {
+            let bytes = word.as_bytes();
+            !bytes.is_empty()
+                && bytes.first().is_some_and(u8::is_ascii_alphabetic)
+                && bytes.last().is_some_and(u8::is_ascii_alphabetic)
+                && bytes
+                    .iter()
+                    .all(|byte| byte.is_ascii_alphabetic() || *byte == b'\'' || *byte == b'-')
+        })
 }
 
 fn append_platform_dictionary(text: &str, result: &mut TranslationResult) {

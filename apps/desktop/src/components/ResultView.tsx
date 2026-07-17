@@ -2,12 +2,15 @@ import { Badge, Disclosure } from "@moyu/ui";
 import { Copy, Star, Volume2 } from "lucide-react";
 import { useState } from "react";
 import { speak } from "../services/bridge";
+import { vocabularyUnavailableReason } from "../services/vocabulary";
 import { useAppStore } from "../store/useAppStore";
 
 export function ResultView() {
   const result = useAppStore((state) => state.result);
-  const favorite = useAppStore((state) => state.favorite);
-  const toggleFavorite = useAppStore((state) => state.toggleFavorite);
+  const inVocabulary = useAppStore((state) => state.inVocabulary);
+  const vocabularyCandidate = useAppStore((state) => state.vocabularyCandidate);
+  const vocabularyMessage = useAppStore((state) => state.vocabularyMessage);
+  const toggleVocabulary = useAppStore((state) => state.toggleVocabulary);
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
   if (!result) return null;
@@ -40,8 +43,15 @@ export function ResultView() {
           <button className="icon-action" type="button" onClick={() => navigator.clipboard.writeText(result.primaryText)} aria-label="复制主释义">
             <Copy size={15} />
           </button>
-          <button className={`icon-action ${favorite ? "is-active" : ""}`} type="button" onClick={toggleFavorite} aria-label="收藏">
-            <Star size={15} fill={favorite ? "currentColor" : "none"} />
+          <button
+            className={`icon-action ${inVocabulary ? "is-active" : ""}`}
+            type="button"
+            onClick={toggleVocabulary}
+            aria-label={inVocabulary ? "从生词本移除" : "加入生词本"}
+            title={vocabularyCandidate ? (inVocabulary ? "从生词本移除" : "加入生词本") : vocabularyUnavailableReason(result)}
+            disabled={!vocabularyCandidate}
+          >
+            <Star size={15} fill={inVocabulary ? "currentColor" : "none"} />
           </button>
         </div>
       </div>
@@ -118,7 +128,7 @@ export function ResultView() {
       )}
 
       <footer className="result__footer">
-        <span>{result.provider}</span>
+        <span>{vocabularyMessage ?? result.provider}</span>
         <span>{result.latencyMilliseconds}ms</span>
       </footer>
     </div>

@@ -2,10 +2,15 @@ import type {
   AppPreferences,
   ModelPackStatus,
   PlatformCapabilities,
+  ReviewRating,
   SavedTranslation,
   SavedTranslationKind,
   TranslationRequest,
   TranslationResult,
+  VocabularyCandidate,
+  VocabularyEntry,
+  VocabularyFilter,
+  VocabularyStats,
 } from "@moyu/contracts";
 import {
   localModelStatuses,
@@ -14,6 +19,13 @@ import {
   translateWithLocalModel,
   type ModelDirection,
 } from "./localTranslation";
+import {
+  MASTERED_REVIEW_STAGE,
+  nextReviewSchedule,
+  normalizeVocabularyTerm,
+  takeReviewBatch,
+  vocabularyCandidateFromResult,
+} from "./vocabulary";
 
 const isTauriRuntime = () => "__TAURI_INTERNALS__" in window;
 
@@ -99,7 +111,20 @@ export async function translate(
   await new Promise((resolve) => setTimeout(resolve, 90));
   const result = request.text.trim().toLowerCase() === "ability"
     ? previewResult
-    : { ...previewResult, sourceText: request.text, headword: request.text, primaryText: `“${request.text}”的本地翻译预览` };
+    : {
+        ...previewResult,
+        sourceText: request.text,
+        headword: request.text,
+        primaryText: `“${request.text}”的本地翻译预览`,
+        pronunciations: [],
+        senses: [],
+        forms: [],
+        examples: [],
+        relations: [],
+        vocabularyTags: [],
+        sources: [],
+        provider: "Moyu 本地模型预览",
+      };
   recordPreviewHistory(result);
   return result;
 }
@@ -146,17 +171,123 @@ export async function loadPreferences(): Promise<AppPreferences | null> {
 }
 
 export async function toggleFavorite(result: TranslationResult, favorite: boolean): Promise<void> {
-  if (isTauriRuntime()) await invokeCommand("toggle_favorite", { result, favorite });
-  else {
-    const entries = previewSaved("favorite").filter((item) => item.result.sourceText !== result.sourceText);
-    if (favorite) entries.unshift(savedPreview("favorite", result));
-    localStorage.setItem("moyu-preview-favorites", JSON.stringify(entries));
-  }
+  const candidate = await resolveVocabularyCandidate(result);
+  if (!candidate) throw new Error("生词本仅支持英文单词或短语");
+  if (favorite) await saveVocabulary(candidate);
+  else await removeVocabulary(candidate.term);
 }
 
 export async function favoriteState(sourceText: string): Promise<boolean> {
-  if (isTauriRuntime()) return invokeCommand("is_favorite", { sourceText });
-  return previewSaved("favorite").some((item) => item.result.sourceText === sourceText);
+  return isInVocabulary(sourceText);
+}
+
+export async function resolveVocabularyCandidate(result: TranslationResult): Promise<VocabularyCandidate | null> {
+  const candidate = vocabularyCandidateFromResult(result);
+  if (!candidate) return null;
+  if (isTauriRuntime()) return invokeCommand("vocabulary_candidate", { result });
+  return candidate;
+}
+
+export async function saveVocabulary(candidate: VocabularyCandidate): Promise<VocabularyEntry> {
+  if (isTauriRuntime()) return invokeCommand("save_vocabulary", { candidate });
+  ensurePreviewVocabularyMigrated();
+  const key = vocabularyKey(candidate.term);
+  const entries = previewVocabulary();
+  const existing = entries.find((entry) => entry.reviewEligible && vocabularyKey(entry.term) === key);
+  const entry: VocabularyEntry = existing
+    ? {
+        ...existing,
+        term: normalizeVocabularyTerm(candidate.term),
+        definition: candidate.definition.trim(),
+        reviewEligible: true,
+        result: candidate.result,
+      }
+    : vocabularyPreview(candidate, true);
+  writePreviewVocabulary([entry, ...entries.filter((item) => item.id !== entry.id)]);
+  return entry;
+}
+
+export async function removeVocabulary(term: string, entryId?: string): Promise<void> {
+  if (isTauriRuntime()) await invokeCommand("remove_vocabulary", { term, entryId: entryId ?? null });
+  else {
+    ensurePreviewVocabularyMigrated();
+    const key = vocabularyKey(term);
+    writePreviewVocabulary(previewVocabulary().filter((entry) => entryId
+      ? entry.id !== entryId
+      : !(entry.reviewEligible && vocabularyKey(entry.term) === key)));
+  }
+}
+
+export async function isInVocabulary(term: string): Promise<boolean> {
+  if (isTauriRuntime()) return invokeCommand("is_in_vocabulary", { term });
+  ensurePreviewVocabularyMigrated();
+  const key = vocabularyKey(term);
+  return previewVocabulary().some((entry) => entry.reviewEligible && vocabularyKey(entry.term) === key);
+}
+
+export async function listVocabulary(
+  query = "",
+  filter: VocabularyFilter = "all",
+  limit = 100,
+): Promise<VocabularyEntry[]> {
+  if (isTauriRuntime()) return invokeCommand("list_vocabulary", { query, filter, limit });
+  ensurePreviewVocabularyMigrated();
+  const normalized = query.trim().toLocaleLowerCase();
+  const now = Date.now();
+  return previewVocabulary()
+    .filter((entry) => !normalized || entry.term.toLocaleLowerCase().includes(normalized) || entry.definition.toLocaleLowerCase().includes(normalized))
+    .filter((entry) => filter === "all"
+      || (filter === "due" && entry.reviewEligible && new Date(entry.nextReviewAt).getTime() <= now)
+      || (filter === "mastered" && entry.reviewEligible && entry.reviewStage >= MASTERED_REVIEW_STAGE))
+    .sort((left, right) => filter === "due"
+      ? new Date(left.nextReviewAt).getTime() - new Date(right.nextReviewAt).getTime()
+      : new Date(right.addedAt).getTime() - new Date(left.addedAt).getTime())
+    .slice(0, limit);
+}
+
+export async function dueVocabulary(limit = 20): Promise<VocabularyEntry[]> {
+  if (isTauriRuntime()) return invokeCommand("due_vocabulary", { limit });
+  ensurePreviewVocabularyMigrated();
+  return takeReviewBatch(previewVocabulary(), new Date(), limit);
+}
+
+export async function vocabularyStats(): Promise<VocabularyStats> {
+  if (isTauriRuntime()) return invokeCommand("vocabulary_stats");
+  ensurePreviewVocabularyMigrated();
+  const entries = previewVocabulary();
+  const now = Date.now();
+  return {
+    total: entries.length,
+    dueToday: entries.filter((entry) => entry.reviewEligible && new Date(entry.nextReviewAt).getTime() <= now).length,
+    mastered: entries.filter((entry) => entry.reviewEligible && entry.reviewStage >= MASTERED_REVIEW_STAGE).length,
+    legacy: entries.filter((entry) => !entry.reviewEligible).length,
+  };
+}
+
+export async function reviewVocabulary(
+  term: string,
+  rating: ReviewRating,
+  reviewedAt = new Date(),
+): Promise<VocabularyEntry> {
+  if (isTauriRuntime()) {
+    return invokeCommand("review_vocabulary", { term, rating, reviewedAt: reviewedAt.toISOString() });
+  }
+  ensurePreviewVocabularyMigrated();
+  const key = vocabularyKey(term);
+  const entries = previewVocabulary();
+  const current = entries.find((entry) => vocabularyKey(entry.term) === key && entry.reviewEligible);
+  if (!current) throw new Error("找不到可复习的生词");
+  const schedule = nextReviewSchedule(current.reviewStage, rating, reviewedAt);
+  const updated: VocabularyEntry = {
+    ...current,
+    reviewStage: schedule.reviewStage,
+    reviewCount: current.reviewCount + 1,
+    lapseCount: current.lapseCount + schedule.lapseIncrement,
+    lastReviewedAt: reviewedAt.toISOString(),
+    nextReviewAt: schedule.nextReviewAt,
+  };
+  writePreviewVocabulary(entries.map((entry) => vocabularyKey(entry.term) === key ? updated : entry));
+  return updated;
 }
 
 export async function listSavedTranslations(
@@ -165,6 +296,14 @@ export async function listSavedTranslations(
   limit = 100,
 ): Promise<SavedTranslation[]> {
   if (isTauriRuntime()) return invokeCommand("list_saved_translations", { kind, query, limit });
+  if (kind === "favorite") {
+    return (await listVocabulary(query, "all", limit)).map((entry) => ({
+      id: entry.id,
+      kind: "favorite",
+      storedAt: entry.addedAt,
+      result: entry.result,
+    }));
+  }
   const normalized = query.trim().toLocaleLowerCase();
   return previewSaved(kind)
     .filter((item) => !normalized || item.result.sourceText.toLocaleLowerCase().includes(normalized))
@@ -213,6 +352,75 @@ function previewSaved(kind: SavedTranslationKind): SavedTranslation[] {
   } catch {
     return [];
   }
+}
+
+const previewVocabularyKey = "moyu-preview-vocabulary-v2";
+const previewVocabularyMigrationKey = "moyu-preview-vocabulary-migrated-v1";
+
+function vocabularyKey(term: string) {
+  return normalizeVocabularyTerm(term).toLocaleLowerCase();
+}
+
+function vocabularyPreview(
+  candidate: VocabularyCandidate,
+  reviewEligible: boolean,
+  addedAt = new Date().toISOString(),
+  id?: string,
+): VocabularyEntry {
+  const term = normalizeVocabularyTerm(candidate.term) || normalizeVocabularyTerm(candidate.originalSourceText) || "未命名收藏";
+  return {
+    id: id ?? vocabularyKey(term),
+    term,
+    definition: candidate.definition.trim(),
+    addedAt,
+    reviewStage: 0,
+    reviewCount: 0,
+    lapseCount: 0,
+    nextReviewAt: addedAt,
+    reviewEligible,
+    result: candidate.result,
+  };
+}
+
+function previewVocabulary(): VocabularyEntry[] {
+  try {
+    return JSON.parse(localStorage.getItem(previewVocabularyKey) ?? "[]") as VocabularyEntry[];
+  } catch {
+    return [];
+  }
+}
+
+function writePreviewVocabulary(entries: VocabularyEntry[]) {
+  localStorage.setItem(previewVocabularyKey, JSON.stringify(entries));
+}
+
+function ensurePreviewVocabularyMigrated() {
+  if (localStorage.getItem(previewVocabularyMigrationKey) === "true") return;
+  const existing = previewVocabulary();
+  const eligibleKeys = new Set(existing.filter((entry) => entry.reviewEligible).map((entry) => vocabularyKey(entry.term)));
+  const migrated: VocabularyEntry[] = [];
+  for (const [index, saved] of previewSaved("favorite").entries()) {
+    const candidate = vocabularyCandidateFromResult(saved.result);
+    const fallback: VocabularyCandidate = candidate ?? {
+      term: saved.result.sourceText,
+      definition: saved.result.primaryText,
+      originalSourceText: saved.result.sourceText,
+      result: saved.result,
+    };
+    const key = vocabularyKey(fallback.term);
+    const reviewEligible = Boolean(candidate) && !eligibleKeys.has(key);
+    const id = reviewEligible ? key : `legacy:${index}:${key}`;
+    migrated.push(vocabularyPreview(fallback, reviewEligible, normalizeStoredAt(saved.storedAt), id));
+    if (reviewEligible) eligibleKeys.add(key);
+  }
+  writePreviewVocabulary([...migrated, ...existing]);
+  localStorage.setItem(previewVocabularyMigrationKey, "true");
+}
+
+function normalizeStoredAt(value: string) {
+  const normalized = /(?:Z|[+-]\d\d:\d\d)$/u.test(value) ? value : `${value.replace(" ", "T")}Z`;
+  const date = new Date(normalized);
+  return Number.isNaN(date.getTime()) ? new Date().toISOString() : date.toISOString();
 }
 
 function recordPreviewHistory(result: TranslationResult) {

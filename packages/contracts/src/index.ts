@@ -91,6 +91,37 @@ export interface SavedTranslation {
   result: TranslationResult;
 }
 
+export type ReviewRating = "again" | "known";
+export type VocabularyFilter = "all" | "due" | "mastered";
+
+export interface VocabularyCandidate {
+  term: string;
+  definition: string;
+  originalSourceText: string;
+  result: TranslationResult;
+}
+
+export interface VocabularyEntry {
+  id: string;
+  term: string;
+  definition: string;
+  addedAt: string;
+  reviewStage: number;
+  reviewCount: number;
+  lapseCount: number;
+  lastReviewedAt?: string | null;
+  nextReviewAt: string;
+  reviewEligible: boolean;
+  result: TranslationResult;
+}
+
+export interface VocabularyStats {
+  total: number;
+  dueToday: number;
+  mastered: number;
+  legacy: number;
+}
+
 export type PermissionState = "granted" | "denied" | "not-determined" | "unavailable";
 
 export interface PlatformCapabilities {

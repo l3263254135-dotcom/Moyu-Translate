@@ -12,13 +12,14 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(dictionary_path: PathBuf, user_data_path: PathBuf) -> anyhow::Result<Self> {
-        let user_store = UserStore::open(&user_data_path)?;
+        let dictionary = if dictionary_path.exists() {
+            DictionaryStore::open(&dictionary_path)
+        } else {
+            DictionaryStore::unavailable()
+        };
+        let user_store = UserStore::open_with_dictionary(&user_data_path, &dictionary)?;
         Ok(Self {
-            dictionary: Mutex::new(if dictionary_path.exists() {
-                DictionaryStore::open(&dictionary_path)
-            } else {
-                DictionaryStore::unavailable()
-            }),
+            dictionary: Mutex::new(dictionary),
             user_store: Mutex::new(user_store),
             last_anchor: Mutex::new(None),
         })
