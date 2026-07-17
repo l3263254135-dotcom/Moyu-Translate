@@ -61,6 +61,10 @@
     },
     "windows": {
       "webviewInstallMode": { "type": "embedBootstrapper" },
+      "wix": {
+        "version": "0.2.0.1",
+        "upgradeCode": "f9f4aa6f-2baa-5b14-ad54-30877fe11072"
+      },
       "nsis": {
         "displayLanguageSelector": true,
         "installerIcon": "icons/icon.ico",

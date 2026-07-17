@@ -21,7 +21,11 @@ struct OptionHoldStateMachine {
     }
 
     mutating func shouldTrigger(at time: TimeInterval) -> Bool {
-        guard let pressedAt, !didTrigger, time - pressedAt >= threshold else { return false }
+        guard let pressedAt, !didTrigger else { return false }
+        let elapsed = time - pressedAt
+        let scale = max(max(abs(time), abs(pressedAt)), 1)
+        let tolerance = scale * TimeInterval.ulpOfOne * 4
+        guard elapsed + tolerance >= threshold else { return false }
         didTrigger = true
         return true
     }
