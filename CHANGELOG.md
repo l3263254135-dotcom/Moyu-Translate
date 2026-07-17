@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0-beta.2 - 2026-07-17
+
+- Upgraded local favorites into a searchable vocabulary notebook with due and mastered filters.
+- Added offline flashcard review with pronunciation, answer reveal, examples and fixed 1/3/7/14/30/60-day intervals.
+- Added binary known/again grading, ten-minute rescheduling with at most one same-round requeue, and a 20-card review batch.
+- Added transactional migration from beta.1 favorites without deleting the rollback source table.
+- Added local vocabulary statistics and a due-count badge shared by macOS and Windows.
+
 ## 0.2.0-beta.1 - 2026-07-15
 
 - Added the Tauri 2 + React + TypeScript macOS/Windows client while preserving native macOS v0.1.1.

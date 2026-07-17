@@ -39,9 +39,17 @@ WordNet is provided without warranty. The full license distributed by Princeton 
 - ONNX Runtime: https://github.com/microsoft/onnxruntime (MIT)
 - Use in Moyu: local q8 translation inference inside a Web Worker
 
+## Compromise
+
+- Project: Compromise natural language processing
+- Source: https://github.com/spencermountain/compromise
+- Version: `14.16.0`
+- Use in Moyu: offline contextual English part-of-speech analysis for vocabulary candidate validation
+- License: MIT
+
 Translation model files are downloaded on first use and are not committed to this repository. The model card and license shown by the selected upstream model repository apply to downloaded model assets. The pinned upstream model licenses and notices must be reviewed again before Beta is promoted to stable.
 
-Pinned model revisions used by `v0.2.0-beta.1`:
+Pinned model revisions used by the `v0.2.0` beta series:
 
 - `Xenova/opus-mt-en-zh@046f55aec303cdee3e0318604406d4df20f1e8ea`
 - `Xenova/opus-mt-zh-en@39d480d52a9ea3065a1f117adfe4dbc55de10e6f`

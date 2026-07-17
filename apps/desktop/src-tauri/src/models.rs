@@ -112,6 +112,40 @@ pub struct SavedTranslation {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct VocabularyCandidate {
+    pub term: String,
+    pub definition: String,
+    pub original_source_text: String,
+    pub result: TranslationResult,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VocabularyEntry {
+    pub id: String,
+    pub term: String,
+    pub definition: String,
+    pub added_at: String,
+    pub review_stage: i64,
+    pub review_count: i64,
+    pub lapse_count: i64,
+    pub last_reviewed_at: Option<String>,
+    pub next_review_at: String,
+    pub review_eligible: bool,
+    pub result: TranslationResult,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct VocabularyStats {
+    pub total: i64,
+    pub due_today: i64,
+    pub mastered: i64,
+    pub legacy: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AppPreferences {
     pub enabled: bool,
     pub theme: String,

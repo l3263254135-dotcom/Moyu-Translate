@@ -4,7 +4,7 @@ Moyu Translate 是一款本地优先的 macOS 与 Windows 悬浮翻译工具。�
 
 ![Moyu Translate app icon](Assets/IconSource.png)
 
-> `v0.2.0-beta.1` 正在以 Tauri 2 + React + TypeScript 重构双平台客户端。原生 SwiftUI `v0.1.1` 稳定版继续保留在 `Sources/MoyuTranslate`，不会被 Beta 架构覆盖。
+> `v0.2.0-beta.2` 正在以 Tauri 2 + React + TypeScript 重构双平台客户端。原生 SwiftUI `v0.1.1` 稳定版继续保留在 `Sources/MoyuTranslate`，不会被 Beta 架构覆盖。
 
 ## v0.2 Beta 功能
 
@@ -14,7 +14,7 @@ Moyu Translate 是一款本地优先的 macOS 与 Windows 悬浮翻译工具。�
 - 英文单词优先查询 SQLite FTS5；短语、句子和中译英使用独立 Web Worker 中的 q8 本地模型。
 - 模型首次使用时按固定提交下载，支持断点续传并逐文件校验 SHA-256；校验后的缓存可断网翻译，查询文本不会发送到翻译 API。
 - macOS 使用辅助功能文本、ScreenCaptureKit 与 Vision；Windows 使用 UI Automation 与 Windows OCR。
-- 暖白/炭黑双主题、鱼干橙品牌色、窗口固定、系统朗读、本地收藏和默认关闭的本地历史。
+- 暖白/炭黑双主题、鱼干橙品牌色、窗口固定、系统朗读、本地生词本、卡片复习和默认关闭的本地历史。
 - Astro 中英双语官网、GitHub Release 下载清单、SEO、宣传运营 Markdown 与中文 PDF 手册。
 
 Oxford、Cambridge 等商业词典正文不会打包。`Oxford 3000`、`IELTS`、`TOEFL`、`GRE` 等仅作为学习/考试标签显示。
@@ -90,7 +90,7 @@ pnpm dictionary:v2
 
 ## 隐私与限制
 
-- 单词数据库、OCR、收藏和可选历史均在当前设备处理。
+- 单词数据库、OCR、生词本、复习进度和可选历史均在当前设备处理。
 - 历史默认关闭，开启后最多保留 500 条，可随用户数据库删除。
 - q8 模型首次下载需要网络；文件校验通过后不依赖云端翻译服务。
 - DRM/系统保护内容无法截图时会明确报错。
