@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0-beta.3 - 2026-07-18
+
+- 修复 macOS 辅助应用模式下菜单栏图标不可见的问题。
+- 新增专用的“猫脸 + 小鱼”单色模板图标，可自动适配浅色与深色菜单栏。
+- Windows 托盘继续使用彩色应用图标，保持双平台原生显示习惯。
+
 ## 0.2.0-beta.2 - 2026-07-17
 
 - Upgraded local favorites into a searchable vocabulary notebook with due and mastered filters.

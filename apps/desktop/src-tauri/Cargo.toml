@@ -1,6 +1,6 @@
 [package]
 name = "moyu-translate"
-version = "0.2.0-beta.2"
+version = "0.2.0-beta.3"
 description = "Local-first hover translator for macOS and Windows"
 authors = ["l3263254135-dotcom"]
 license = "MIT"

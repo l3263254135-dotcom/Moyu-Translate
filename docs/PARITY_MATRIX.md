@@ -31,5 +31,5 @@
 ## 当前实现状态
 
 - `v0.1.1` 原生 macOS 稳定版：已发布。
-- `v0.2.0-beta.2` Tauri 共享 UI、Dictionary v2、生词本卡片复习、历史管理和已校验模型缓存：已建立。
+- `v0.2.0-beta.3` Tauri 共享 UI、Dictionary v2、生词本卡片复习、历史管理、菜单栏/托盘入口和已校验模型缓存：已建立。
 - 原生 OCR、Windows 低级键盘钩子和 Windows 安装包：必须在 Beta 发布前完成真实设备或 GitHub Windows runner 验证。
