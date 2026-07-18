@@ -4,7 +4,7 @@ Moyu Translate 是一款本地优先的 macOS 与 Windows 悬浮翻译工具。�
 
 ![Moyu Translate app icon](Assets/IconSource.png)
 
-> `v0.2.0-beta.2` 正在以 Tauri 2 + React + TypeScript 重构双平台客户端。原生 SwiftUI `v0.1.1` 稳定版继续保留在 `Sources/MoyuTranslate`，不会被 Beta 架构覆盖。
+> `v0.2.0-beta.3` 正在以 Tauri 2 + React + TypeScript 重构双平台客户端。原生 SwiftUI `v0.1.1` 稳定版继续保留在 `Sources/MoyuTranslate`，不会被 Beta 架构覆盖。
 
 ## v0.2 Beta 功能
 

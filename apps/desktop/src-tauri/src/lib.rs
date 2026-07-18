@@ -8,11 +8,21 @@ mod user_store;
 use std::fs;
 
 use tauri::{
+    image::Image,
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
     Manager,
 };
 use tauri_plugin_autostart::MacosLauncher;
+
+#[cfg(target_os = "macos")]
+const TRAY_ICON_BYTES: &[u8] = include_bytes!("../icons/trayTemplate.png");
+#[cfg(not(target_os = "macos"))]
+const TRAY_ICON_BYTES: &[u8] = include_bytes!("../icons/32x32.png");
+
+fn tray_icon() -> tauri::Result<Image<'static>> {
+    Image::from_bytes(TRAY_ICON_BYTES)
+}
 
 pub fn run() {
     tauri::Builder::default()
@@ -44,7 +54,8 @@ pub fn run() {
             let show = MenuItem::with_id(app, "show", "打开翻译窗", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出 Moyu Translate", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &quit])?;
-            let _tray = TrayIconBuilder::new()
+            let mut tray = TrayIconBuilder::new()
+                .icon(tray_icon()?)
                 .menu(&menu)
                 .tooltip("Moyu Translate Beta")
                 .on_menu_event(|app, event| match event.id.as_ref() {
@@ -56,8 +67,12 @@ pub fn run() {
                     }
                     "quit" => app.exit(0),
                     _ => {}
-                })
-                .build(app)?;
+                });
+            #[cfg(target_os = "macos")]
+            {
+                tray = tray.icon_as_template(true);
+            }
+            let _tray = tray.build(app)?;
 
             platform::start_hold_monitor(app.handle().clone());
             if std::env::args().any(|argument| argument == "--background") {
@@ -95,4 +110,18 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running Moyu Translate");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::tray_icon;
+
+    #[test]
+    fn bundled_tray_icon_is_square_and_visible() {
+        let icon = tray_icon().expect("tray icon should decode");
+        assert_eq!(icon.width(), icon.height());
+        assert!(icon.width() >= 32);
+        assert!(icon.rgba().chunks_exact(4).any(|pixel| pixel[3] > 0));
+        assert!(icon.rgba().chunks_exact(4).any(|pixel| pixel[3] == 0));
+    }
 }
