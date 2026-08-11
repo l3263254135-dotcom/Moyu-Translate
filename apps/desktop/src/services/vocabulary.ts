@@ -42,11 +42,21 @@ function looksLikeCompleteSentence(value: string) {
   const parsed = nlp(value).json({ terms: { text: true, normal: true, tags: true } }) as Array<{ terms?: ParsedTerm[] }>;
   const terms = parsed[0]?.terms ?? [];
   return terms.some((term, index) => {
-    if (index === 0 || !term.tags?.includes("Verb")) return false;
+    if (!term.tags?.includes("Verb")) return false;
+    if (index === 0) {
+      const isLeadingAuxiliary = term.tags.some((tag) => tag === "Copula" || tag === "Modal" || tag === "Auxiliary");
+      return isLeadingAuxiliary && terms.slice(1).some(isSubjectTerm);
+    }
     if ((terms[index - 1]?.normal ?? terms[index - 1]?.text.toLowerCase()) === "to") return false;
-    const hasSubject = terms.slice(0, index).some((candidate) => candidate.tags?.includes("Noun"));
+    const hasSubject = terms.slice(0, index).some(isSubjectTerm);
     return hasSubject && !isNounCompoundException(terms, index);
   });
+}
+
+function isSubjectTerm(term: ParsedTerm) {
+  const normal = term.normal ?? term.text.toLowerCase();
+  return term.tags?.some((tag) => tag === "Noun" || tag === "Pronoun" || tag === "QuestionWord") === true
+    || ["this", "that", "these", "those", "there", "it"].includes(normal);
 }
 
 function isNounCompoundException(terms: ParsedTerm[], verbIndex: number) {

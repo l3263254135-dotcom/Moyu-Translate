@@ -42,6 +42,17 @@ export function SettingsView() {
       </div>
 
       <div className="settings-section">
+        <h3>发音</h3>
+        <Toggle
+          label="查询后自动发音"
+          checked={preferences.autoPronounce}
+          onChange={(autoPronounce) => updatePreferences({ autoPronounce })}
+          disabled={capabilities?.textToSpeech === false}
+        />
+        <p className="settings-note">仅在英文单词或短语查询成功后使用系统英语语音朗读。</p>
+      </div>
+
+      <div className="settings-section">
         <h3>离线句子翻译</h3>
         <ModelRow
           label="英文 → 中文 q8"

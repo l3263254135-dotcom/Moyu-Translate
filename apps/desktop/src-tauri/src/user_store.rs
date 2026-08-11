@@ -573,6 +573,22 @@ mod tests {
     }
 
     #[test]
+    fn legacy_preferences_enable_auto_pronunciation() {
+        let (store, path) = store();
+        store
+            .connection
+            .execute(
+                "INSERT INTO settings(key, value) VALUES('preferences', ?1)",
+                params![r#"{"enabled":true,"theme":"system","pinned":false,"launchAtLogin":false,"holdDurationMilliseconds":350,"historyEnabled":false,"dictionaryOptions":{"useOfflineDictionary":true,"usePlatformDictionary":true,"showVocabularyTags":true,"includeExamples":true,"includeRelations":true}}"#],
+            )
+            .expect("insert legacy preferences");
+        let preferences = store.preferences().expect("load legacy preferences");
+        assert!(preferences.auto_pronounce);
+        drop(store);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
     fn history_is_opt_in_and_clearable() {
         let (store, path) = store();
         assert_eq!(

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { useAppStore } from "../store/useAppStore";
 import { LibraryView } from "./LibraryView";
 import { ResultView } from "./ResultView";
+import { SettingsView } from "./SettingsView";
 import { VocabularyReview } from "./VocabularyReview";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -60,6 +61,28 @@ describe("vocabulary result action", () => {
     const sentence = render(<ResultView />);
     expect(sentence.container.querySelector<HTMLButtonElement>('button[aria-label="加入生词本"]')?.disabled).toBe(true);
     sentence.unmount();
+  });
+});
+
+describe("automatic pronunciation setting", () => {
+  it("shows the enabled-by-default toggle in settings", () => {
+    useAppStore.setState({
+      preferences: { ...useAppStore.getState().preferences, autoPronounce: true },
+      capabilities: {
+        platform: "macos",
+        triggerKeyLabel: "Option",
+        accessibility: "granted",
+        screenCapture: "granted",
+        textToSpeech: true,
+        platformDictionary: true,
+        launchAtLogin: false,
+      },
+    });
+    const view = render(<SettingsView />);
+    expect(view.container.textContent).toContain("查询后自动发音");
+    const label = Array.from(view.container.querySelectorAll("label")).find((item) => item.textContent?.includes("查询后自动发音"));
+    expect(label?.querySelector<HTMLInputElement>("input")?.checked).toBe(true);
+    view.unmount();
   });
 });
 

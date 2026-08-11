@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0-beta.4 - 2026-08-11
+
+- Added automatic system pronunciation after successful English word and phrase lookups.
+- Added an enabled-by-default setting that can disable automatic pronunciation without affecting manual speech controls.
+- Preferred normalized dictionary headwords for inflected queries and isolated speech failures from translation results.
+- Preserved existing preferences by defaulting the new setting during SQLite and web preview migration.
+
 ## 0.2.0-beta.3 - 2026-07-18
 
 - 修复 macOS 辅助应用模式下菜单栏图标不可见的问题。
