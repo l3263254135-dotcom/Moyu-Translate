@@ -148,6 +148,8 @@ pub struct VocabularyStats {
 #[serde(rename_all = "camelCase")]
 pub struct AppPreferences {
     pub enabled: bool,
+    #[serde(default = "default_true")]
+    pub auto_pronounce: bool,
     pub theme: String,
     pub pinned: bool,
     pub launch_at_login: bool,
@@ -160,6 +162,7 @@ impl Default for AppPreferences {
     fn default() -> Self {
         Self {
             enabled: true,
+            auto_pronounce: true,
             theme: "system".into(),
             pinned: false,
             launch_at_login: false,
@@ -174,6 +177,10 @@ impl Default for AppPreferences {
             },
         }
     }
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -4,6 +4,7 @@ import { defaultPreferences, mergeModelStatus } from "./useAppStore";
 describe("default preferences", () => {
   it("keeps history opt-in and dictionary features enabled", () => {
     expect(defaultPreferences.historyEnabled).toBe(false);
+    expect(defaultPreferences.autoPronounce).toBe(true);
     expect(defaultPreferences.dictionaryOptions.useOfflineDictionary).toBe(true);
     expect(defaultPreferences.dictionaryOptions.includeExamples).toBe(true);
   });

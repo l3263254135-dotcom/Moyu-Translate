@@ -187,6 +187,7 @@ export interface ReleaseManifest {
 
 export interface AppPreferences {
   enabled: boolean;
+  autoPronounce: boolean;
   theme: ThemeMode;
   pinned: boolean;
   launchAtLogin: boolean;

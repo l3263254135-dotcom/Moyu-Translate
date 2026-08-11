@@ -1,4 +1,5 @@
 use std::{
+    os::windows::process::CommandExt,
     path::PathBuf,
     process::Command,
     sync::{
@@ -194,14 +195,29 @@ fn clamped_panel_position(
     )
 }
 
-pub fn speak(text: &str, _locale: &str) -> Result<(), String> {
-    let escaped = text.replace('\'', "''");
-    let script = format!(
-        "Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $s.Speak('{}')",
-        escaped
-    );
+pub fn speak(text: &str, locale: &str) -> Result<(), String> {
+    let script = r#"
+Add-Type -AssemblyName System.Speech
+$s = New-Object System.Speech.Synthesis.SpeechSynthesizer
+$locale = $env:MOYU_SPEECH_LOCALE
+$voice = $s.GetInstalledVoices() |
+  Where-Object { $_.Enabled -and $_.VoiceInfo.Culture.Name -eq $locale } |
+  Select-Object -First 1
+if (-not $voice) {
+  $language = ($locale -split '-')[0]
+  $voice = $s.GetInstalledVoices() |
+    Where-Object { $_.Enabled -and $_.VoiceInfo.Culture.TwoLetterISOLanguageName -eq $language } |
+    Select-Object -First 1
+}
+if (-not $voice) { exit 2 }
+$s.SelectVoice($voice.VoiceInfo.Name)
+$s.Speak($env:MOYU_SPEECH_TEXT)
+"#;
     Command::new("powershell")
-        .args(["-NoProfile", "-Command", &script])
+        .env("MOYU_SPEECH_TEXT", text)
+        .env("MOYU_SPEECH_LOCALE", locale)
+        .args(["-NoProfile", "-NonInteractive", "-Command", script])
+        .creation_flags(0x0800_0000)
         .spawn()
         .map(|_| ())
         .map_err(|error| error.to_string())

@@ -51,6 +51,9 @@ describe("vocabulary candidates", () => {
 
   it("rejects sentences, non-English text, and phrases over eight words", () => {
     expect(isVocabularyTerm("This is a sentence.")).toBe(false);
+    expect(isVocabularyTerm("This is a test")).toBe(false);
+    expect(isVocabularyTerm("Are you ready")).toBe(false);
+    expect(isVocabularyTerm("What is this")).toBe(false);
     expect(isVocabularyTerm("I want to go home")).toBe(false);
     expect(isVocabularyTerm("Cats are lovely animals")).toBe(false);
     expect(isVocabularyTerm("Moyu makes translation easy")).toBe(false);

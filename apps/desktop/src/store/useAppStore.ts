@@ -32,9 +32,11 @@ import {
   saveVocabulary,
   setLaunchAtLogin,
   setPinned,
+  speak,
   translate,
   vocabularyStats,
 } from "../services/bridge";
+import { automaticPronunciationText } from "../services/autoPronunciation";
 import {
   normalizeVocabularyTerm,
   REVIEW_BATCH_SIZE,
@@ -43,6 +45,7 @@ import {
 
 const defaultPreferences: AppPreferences = {
   enabled: true,
+  autoPronounce: true,
   theme: "system",
   pinned: false,
   launchAtLogin: false,
@@ -65,9 +68,14 @@ const emptyVocabularyStats: VocabularyStats = {
 };
 
 let libraryRequestSequence = 0;
+let translationRequestSequence = 0;
 
 function invalidateLibraryRequests() {
   libraryRequestSequence += 1;
+}
+
+function invalidateTranslationRequests() {
+  translationRequestSequence += 1;
 }
 
 interface AppState {
@@ -154,7 +162,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   capabilities: null,
   modelStatuses: [],
 
-  setQuery: (query) => set({ query }),
+  setQuery: (query) => {
+    invalidateTranslationRequests();
+    set({ query });
+  },
   setSettingsOpen: (settingsOpen) => {
     invalidateLibraryRequests();
     set({ settingsOpen, libraryOpen: false, reviewOpen: false, libraryWorking: false });
@@ -235,8 +246,11 @@ export const useAppStore = create<AppState>((set, get) => ({
     await get().submit();
   },
   openSavedTranslation: async (saved) => {
+    const requestId = ++translationRequestSequence;
     const candidate = await resolveVocabularyCandidate(saved.result);
+    if (requestId !== translationRequestSequence) return;
     const inVocabulary = candidate ? await isInVocabulary(candidate.term) : false;
+    if (requestId !== translationRequestSequence) return;
     invalidateLibraryRequests();
     set({
       query: saved.result.sourceText,
@@ -248,6 +262,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       libraryOpen: false,
       reviewOpen: false,
       settingsOpen: false,
+      working: false,
     });
   },
   startReview: async () => {
@@ -317,14 +332,23 @@ export const useAppStore = create<AppState>((set, get) => ({
       launchAtLoginEnabled(),
       vocabularyStats(),
     ]);
-    const preferences = { ...(stored ?? defaultPreferences), launchAtLogin };
+    const preferences = {
+      ...defaultPreferences,
+      ...(stored ?? {}),
+      launchAtLogin,
+      dictionaryOptions: {
+        ...defaultPreferences.dictionaryOptions,
+        ...(stored?.dictionaryOptions ?? {}),
+      },
+    };
     set({ preferences, capabilities, modelStatuses: statuses, vocabularyStats: stats });
   },
 
   submit: async () => {
+    const requestId = ++translationRequestSequence;
     const text = get().query.trim();
     if (!text) {
-      set({ error: "请输入要查询的英文或中文", result: null, inVocabulary: false, vocabularyCandidate: null });
+      set({ error: "请输入要查询的英文或中文", result: null, working: false, inVocabulary: false, vocabularyCandidate: null });
       return;
     }
     set({ working: true, error: null, inVocabulary: false, vocabularyCandidate: null, vocabularyMessage: null });
@@ -338,15 +362,32 @@ export const useAppStore = create<AppState>((set, get) => ({
           targetLanguage: chinese ? "en" : "zh-Hans",
           dictionaryOptions: get().preferences.dictionaryOptions,
         },
-        (status) => set((state) => ({ modelStatuses: mergeModelStatus(state.modelStatuses, status) })),
+        (status) => {
+          if (requestId === translationRequestSequence) {
+            set((state) => ({ modelStatuses: mergeModelStatus(state.modelStatuses, status) }));
+          }
+        },
       );
+      if (requestId !== translationRequestSequence) return;
       const candidate = await resolveVocabularyCandidate(result);
+      if (requestId !== translationRequestSequence) return;
       const inVocabulary = candidate ? await isInVocabulary(candidate.term) : false;
+      if (requestId !== translationRequestSequence) return;
       set({ result, inVocabulary, vocabularyCandidate: candidate });
+      const pronunciationText = automaticPronunciationText(result);
+      if (
+        get().preferences.autoPronounce
+        && get().capabilities?.textToSpeech !== false
+        && pronunciationText
+      ) {
+        void speak(pronunciationText, "en-US").catch(() => undefined);
+      }
     } catch (error) {
-      set({ result: null, vocabularyCandidate: null, error: error instanceof Error ? error.message : String(error) });
+      if (requestId === translationRequestSequence) {
+        set({ result: null, vocabularyCandidate: null, error: error instanceof Error ? error.message : String(error) });
+      }
     } finally {
-      set({ working: false });
+      if (requestId === translationRequestSequence) set({ working: false });
     }
   },
 
