@@ -1,23 +1,29 @@
 {
-  "version": "0.2.0-beta.1",
+  "version": "0.2.0-beta.4",
   "channel": "beta",
-  "publishedAt": "2026-07-15T00:00:00+08:00",
-  "releaseUrl": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases",
+  "publishedAt": "2026-08-11T08:50:40Z",
+  "releaseUrl": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases/tag/v0.2.0-beta.4",
   "requirements": {
     "macos": "macOS 15+ · Apple Silicon / Intel",
     "windows": "Windows 10 22H2 / Windows 11 · x64"
   },
   "downloads": {
     "macos": {
-      "url": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases/download/v0.1.1/Moyu.Translate.dmg",
-      "sha256Url": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases/download/v0.1.1/Moyu.Translate.dmg.sha256",
-      "label": "macOS 稳定版 v0.1.1",
+      "url": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases/download/v0.2.0-beta.4/Moyu.Translate.Beta_0.2.0-beta.4_universal.dmg",
+      "sha256Url": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases/download/v0.2.0-beta.4/Moyu.Translate.Beta_0.2.0-beta.4_universal.dmg.sha256",
+      "label": "macOS v0.2.0-beta.4",
       "architecture": "Universal"
     },
     "windowsExe": {
-      "url": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases",
-      "sha256Url": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases",
-      "label": "Windows Beta 发布页",
+      "url": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases/download/v0.2.0-beta.4/Moyu.Translate.Beta_0.2.0-beta.4_x64-setup.exe",
+      "sha256Url": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases/download/v0.2.0-beta.4/Moyu.Translate.Beta_0.2.0-beta.4_x64-setup.exe.sha256",
+      "label": "Windows v0.2.0-beta.4",
+      "architecture": "x64"
+    },
+    "windowsMsi": {
+      "url": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases/download/v0.2.0-beta.4/Moyu.Translate.Beta_0.2.0-beta.4_x64_en-US.msi",
+      "sha256Url": "https://github.com/l3263254135-dotcom/Moyu-Translate/releases/download/v0.2.0-beta.4/Moyu.Translate.Beta_0.2.0-beta.4_x64_en-US.msi.sha256",
+      "label": "Windows MSI v0.2.0-beta.4",
       "architecture": "x64"
     }
   }

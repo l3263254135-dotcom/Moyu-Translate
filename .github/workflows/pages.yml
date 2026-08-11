@@ -28,21 +28,42 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v7
+      - name: Check matching release
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="$(jq -r .version package.json)"
+          if gh release view "v${version}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Skipping Pages deployment until v${version} is published."
+          fi
       - uses: pnpm/action-setup@v6
+        if: steps.release.outputs.available == 'true'
         with:
           version: 10.12.1
       - uses: actions/setup-node@v7
+        if: steps.release.outputs.available == 'true'
         with:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+        if: steps.release.outputs.available == 'true'
       - run: pnpm --filter @moyu/website sync:release
+        if: steps.release.outputs.available == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: pnpm --filter @moyu/website build
+        if: steps.release.outputs.available == 'true'
       - uses: actions/configure-pages@v6
+        if: steps.release.outputs.available == 'true'
       - uses: actions/upload-pages-artifact@v5
+        if: steps.release.outputs.available == 'true'
         with:
           path: apps/website/dist
       - id: deployment
         uses: actions/deploy-pages@v5
+        if: steps.release.outputs.available == 'true'
