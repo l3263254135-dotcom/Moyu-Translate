@@ -581,6 +581,55 @@ button {
   color: var(--moyu-danger);
 }
 
+.status-row strong[data-state="ready"] {
+  color: var(--moyu-success);
+}
+
+.status-row strong[data-state="permission-required"],
+.status-row strong[data-state="disabled"] {
+  color: var(--moyu-danger);
+}
+
+.status-row strong[data-state="retrying"],
+.status-row strong[data-state="starting"] {
+  color: var(--moyu-accent-strong);
+}
+
+.permission-help {
+  margin: 4px 0 8px;
+  padding: 9px 10px;
+  border: 1px solid color-mix(in srgb, var(--moyu-accent) 35%, var(--moyu-line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--moyu-accent) 8%, transparent);
+}
+
+.permission-help p {
+  margin: 0;
+  color: var(--moyu-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.permission-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.permission-actions button {
+  border: 1px solid var(--moyu-line);
+  border-radius: 6px;
+  padding: 5px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--moyu-accent-strong);
+  background: var(--moyu-surface-raised);
+  font-size: 10px;
+  cursor: pointer;
+}
+
 .library-tabs {
   height: 38px;
   margin: 12px 0 9px;

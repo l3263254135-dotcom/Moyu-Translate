@@ -4,7 +4,9 @@ Moyu Translate 是一款本地优先的 macOS 与 Windows 悬浮翻译工具。�
 
 ![Moyu Translate app icon](Assets/IconSource.png)
 
-> `v0.2.0-beta.4` 正在以 Tauri 2 + React + TypeScript 重构双平台客户端。原生 SwiftUI `v0.1.1` 稳定版继续保留在 `Sources/MoyuTranslate`，不会被 Beta 架构覆盖。
+> `v0.2.0-beta.5` 正在以 Tauri 2 + React + TypeScript 重构双平台客户端。原生 SwiftUI `v0.1.1` 稳定版继续保留在 `Sources/MoyuTranslate`，不会被 Beta 架构覆盖。beta.4 安装包和 Release 仍保留，不会被覆盖。
+
+beta.5 重点修复 macOS Option 长按：应用会显示监听状态，在缺少辅助功能权限时引导打开系统设置，并在授权或 CGEventTap 被系统禁用后自动恢复。输入框现在会在查询前拦截明显乱码、纯符号和重复字符；每次新查询会取消旧请求，15 秒超时后可立即重试。
 
 ## v0.2 Beta 功能
 

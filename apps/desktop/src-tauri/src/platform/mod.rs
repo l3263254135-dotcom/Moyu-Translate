@@ -27,6 +27,15 @@ pub fn start_hold_monitor(app: AppHandle) {
     fallback::start_hold_monitor(app);
 }
 
+pub fn open_accessibility_settings() -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    return macos::open_accessibility_settings();
+    #[cfg(target_os = "windows")]
+    return windows::open_accessibility_settings();
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    return fallback::open_accessibility_settings();
+}
+
 pub fn speak(text: &str, locale: &str) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     return macos::speak(text, locale);

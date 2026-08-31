@@ -37,6 +37,7 @@ import {
   vocabularyStats,
 } from "../services/bridge";
 import { automaticPronunciationText } from "../services/autoPronunciation";
+import { queryValidationMessage, validateQueryInput } from "../services/queryValidation";
 import {
   normalizeVocabularyTerm,
   REVIEW_BATCH_SIZE,
@@ -69,6 +70,8 @@ const emptyVocabularyStats: VocabularyStats = {
 
 let libraryRequestSequence = 0;
 let translationRequestSequence = 0;
+let activeTranslationController: AbortController | null = null;
+const TRANSLATION_WATCHDOG_MS = 15_000;
 
 function invalidateLibraryRequests() {
   libraryRequestSequence += 1;
@@ -76,6 +79,11 @@ function invalidateLibraryRequests() {
 
 function invalidateTranslationRequests() {
   translationRequestSequence += 1;
+}
+
+function cancelActiveTranslation() {
+  activeTranslationController?.abort();
+  activeTranslationController = null;
 }
 
 interface AppState {
@@ -123,6 +131,7 @@ interface AppState {
   setReviewRevealed: (revealed: boolean) => void;
   gradeReview: (rating: ReviewRating) => Promise<void>;
   initialize: () => Promise<void>;
+  setCapabilities: (patch: Partial<PlatformCapabilities>) => void;
   submit: () => Promise<void>;
   capture: () => Promise<void>;
   updatePreferences: (patch: Partial<AppPreferences>) => Promise<void>;
@@ -162,9 +171,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   capabilities: null,
   modelStatuses: [],
 
+  setCapabilities: (patch) => set((state) => ({ capabilities: state.capabilities ? { ...state.capabilities, ...patch } : state.capabilities })),
+
   setQuery: (query) => {
     invalidateTranslationRequests();
-    set({ query });
+    cancelActiveTranslation();
+    set({ query, working: false });
   },
   setSettingsOpen: (settingsOpen) => {
     invalidateLibraryRequests();
@@ -346,12 +358,27 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   submit: async () => {
     const requestId = ++translationRequestSequence;
-    const text = get().query.trim();
-    if (!text) {
-      set({ error: "请输入要查询的英文或中文", result: null, working: false, inVocabulary: false, vocabularyCandidate: null });
+    cancelActiveTranslation();
+    const controller = new AbortController();
+    activeTranslationController = controller;
+    const validation = validateQueryInput(get().query);
+    if (!validation.valid) {
+      activeTranslationController = null;
+      set({ error: queryValidationMessage(validation.reason), result: null, working: false, inVocabulary: false, vocabularyCandidate: null, vocabularyMessage: null });
       return;
     }
+    const text = validation.normalized;
     set({ working: true, error: null, inVocabulary: false, vocabularyCandidate: null, vocabularyMessage: null });
+    let timedOut = false;
+    const watchdog = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+      if (requestId === translationRequestSequence) {
+        invalidateTranslationRequests();
+        activeTranslationController = null;
+        set({ working: false, result: null, vocabularyCandidate: null, error: "查询超时，请重试" });
+      }
+    }, TRANSLATION_WATCHDOG_MS);
     try {
       const chinese = /[\u3400-\u9fff]/u.test(text);
       const result = await translate(
@@ -367,6 +394,7 @@ export const useAppStore = create<AppState>((set, get) => ({
             set((state) => ({ modelStatuses: mergeModelStatus(state.modelStatuses, status) }));
           }
         },
+        controller.signal,
       );
       if (requestId !== translationRequestSequence) return;
       const candidate = await resolveVocabularyCandidate(result);
@@ -384,9 +412,16 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
     } catch (error) {
       if (requestId === translationRequestSequence) {
-        set({ result: null, vocabularyCandidate: null, error: error instanceof Error ? error.message : String(error) });
+        const cancelled = error instanceof Error && error.name === "AbortError";
+        set({
+          result: null,
+          vocabularyCandidate: null,
+          error: timedOut ? "查询超时，请重试" : cancelled ? null : error instanceof Error ? error.message : String(error),
+        });
       }
     } finally {
+      clearTimeout(watchdog);
+      if (activeTranslationController === controller) activeTranslationController = null;
       if (requestId === translationRequestSequence) set({ working: false });
     }
   },

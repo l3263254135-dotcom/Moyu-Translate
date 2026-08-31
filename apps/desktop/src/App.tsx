@@ -1,7 +1,7 @@
 import { MoyuMark } from "@moyu/ui";
 import { BookMarked, Crosshair, LoaderCircle, Moon, Pin, Settings, Sun, Undo2 } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
-import { hidePanel, isTauriRuntime } from "./services/bridge";
+import { hidePanel, isTauriRuntime, platformCapabilities } from "./services/bridge";
 import { ResultView } from "./components/ResultView";
 import { LibraryView } from "./components/LibraryView";
 import { SettingsView } from "./components/SettingsView";
@@ -26,6 +26,7 @@ export function App() {
   const toggleTheme = useAppStore((state) => state.toggleTheme);
   const togglePinned = useAppStore((state) => state.togglePinned);
   const capabilities = useAppStore((state) => state.capabilities);
+  const setCapabilities = useAppStore((state) => state.setCapabilities);
 
   useEffect(() => { void initialize(); }, [initialize]);
   useEffect(() => {
@@ -39,6 +40,7 @@ export function App() {
     if (!isTauriRuntime()) return;
     let unlistenFocus: (() => void) | undefined;
     let unlistenTrigger: (() => void) | undefined;
+    let unlistenHotkeyStatus: (() => void) | undefined;
     void Promise.all([
       import("@tauri-apps/api/window"),
       import("@tauri-apps/api/event"),
@@ -49,12 +51,24 @@ export function App() {
       unlistenTrigger = await eventApi.listen("moyu://trigger", () => {
         window.setTimeout(() => input.current?.focus(), 0);
       });
+      unlistenHotkeyStatus = await eventApi.listen<string>("moyu://hotkey-status", ({ payload }) => {
+        const hotkeyStatus = payload as NonNullable<typeof capabilities>["hotkeyStatus"];
+        setCapabilities({ hotkeyStatus });
+        if (hotkeyStatus === "ready" || hotkeyStatus === "permission-required") {
+          void platformCapabilities().then((next) => setCapabilities(next));
+        }
+      });
+      // The native monitor can become ready before React finishes mounting;
+      // query the current capability snapshot after registering the listener.
+      const currentCapabilities = await platformCapabilities();
+      setCapabilities(currentCapabilities);
     });
     return () => {
       unlistenFocus?.();
       unlistenTrigger?.();
+      unlistenHotkeyStatus?.();
     };
-  }, []);
+  }, [setCapabilities]);
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && !preferences.pinned) void hidePanel();

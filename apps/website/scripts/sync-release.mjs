@@ -1,5 +1,6 @@
 import { writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { readFile } from "node:fs/promises";
 
 const repository = "l3263254135-dotcom/Moyu-Translate";
 const response = await fetch(`https://api.github.com/repos/${repository}/releases`, {
@@ -11,8 +12,10 @@ const response = await fetch(`https://api.github.com/repos/${repository}/release
 });
 if (!response.ok) throw new Error(`GitHub releases request failed: ${response.status}`);
 const releases = await response.json();
-const release = releases.find((item) => !item.draft && item.tag_name.startsWith("v0.2.0")) ?? releases.find((item) => !item.draft);
-if (!release) throw new Error("No published release found");
+const rootPackage = JSON.parse(await readFile(new URL("../../../package.json", import.meta.url), "utf8"));
+const expectedTag = `v${rootPackage.version}`;
+const release = releases.find((item) => !item.draft && item.tag_name === expectedTag);
+if (!release) throw new Error(`No published release found for ${expectedTag}`);
 
 const asset = (suffix) => release.assets.find((item) => item.name.toLowerCase().endsWith(suffix));
 const checksum = (target) => release.assets.find((item) => item.name === `${target?.name}.sha256`);

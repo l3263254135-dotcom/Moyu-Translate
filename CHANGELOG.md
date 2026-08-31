@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.0-beta.5 - 2026-08-11
+
+- 修复 macOS Option 长按监听初始化失败后永久失效的问题；增加辅助功能权限提示、自动重试和 CGEventTap 被禁用后的恢复。
+- 设置页显示 Option/Alt 监听状态，并提供重新检查权限和打开 macOS 辅助功能设置入口。
+- 增加保守的查询输入校验，快速拦截空输入、纯符号、重复字符和明显乱码，避免无意义查询卡在加载状态。
+- 新查询会取消旧查询；加入 15 秒 watchdog，超时、取消或 worker 异常后可立即再次查询，迟到结果不会覆盖最新结果。
+- 保留 beta.4 的自动发音、生词本和历史数据；beta.5 仍为未公证、未正式签名版本。
+
 ## 0.2.0-beta.4 - 2026-08-11
 
 - Added automatic system pronunciation after successful English word and phrase lookups.

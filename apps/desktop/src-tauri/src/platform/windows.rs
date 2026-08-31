@@ -42,10 +42,15 @@ pub fn capabilities() -> PlatformCapabilities {
         trigger_key_label: "Alt".into(),
         accessibility: "granted".into(),
         screen_capture: "granted".into(),
+        hotkey_status: "ready".into(),
         text_to_speech: true,
         platform_dictionary: false,
         launch_at_login: true,
     }
+}
+
+pub fn open_accessibility_settings() -> Result<(), String> {
+    Ok(())
 }
 
 pub fn start_hold_monitor(app: AppHandle) {

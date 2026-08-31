@@ -124,11 +124,19 @@ export interface VocabularyStats {
 
 export type PermissionState = "granted" | "denied" | "not-determined" | "unavailable";
 
+export type HotkeyMonitorStatus =
+  | "starting"
+  | "ready"
+  | "permission-required"
+  | "retrying"
+  | "disabled";
+
 export interface PlatformCapabilities {
   platform: "macos" | "windows" | "web";
   triggerKeyLabel: "Option" | "Alt";
   accessibility: PermissionState;
   screenCapture: PermissionState;
+  hotkeyStatus: HotkeyMonitorStatus;
   textToSpeech: boolean;
   platformDictionary: boolean;
   launchAtLogin: boolean;

@@ -190,6 +190,7 @@ pub struct PlatformCapabilities {
     pub trigger_key_label: String,
     pub accessibility: String,
     pub screen_capture: String,
+    pub hotkey_status: String,
     pub text_to_speech: bool,
     pub platform_dictionary: bool,
     pub launch_at_login: bool,
