@@ -16,6 +16,11 @@ pub fn platform_capabilities() -> PlatformCapabilities {
 }
 
 #[tauri::command]
+pub fn open_accessibility_settings() -> Result<(), String> {
+    platform::open_accessibility_settings()
+}
+
+#[tauri::command]
 pub fn translate(
     request: TranslationRequest,
     state: State<'_, AppState>,

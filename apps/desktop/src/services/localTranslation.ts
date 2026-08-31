@@ -27,6 +27,8 @@ interface PendingRequest {
   resolve: (value: string) => void;
   reject: (reason: Error) => void;
   onProgress?: (status: ModelPackStatus) => void;
+  signal?: AbortSignal;
+  onAbort?: () => void;
 }
 
 const modelIds: Record<ModelDirection, string> = {
@@ -59,6 +61,7 @@ function getWorker() {
       });
       return;
     }
+    request.signal?.removeEventListener("abort", request.onAbort ?? (() => undefined));
     pending.delete(response.id);
     if (response.type === "error") {
       localStorage.removeItem(readyKey(response.direction));
@@ -71,12 +74,26 @@ function getWorker() {
   });
   worker.addEventListener("error", (event) => {
     const error = new Error(`本地翻译进程异常：${event.message}`);
-    for (const request of pending.values()) request.reject(error);
-    pending.clear();
-    worker?.terminate();
-    worker = null;
+    resetWorker(error);
   });
   return worker;
+}
+
+function abortError() {
+  const error = new Error("查询已取消");
+  error.name = "AbortError";
+  return error;
+}
+
+/** Terminate a worker that cannot safely cancel an in-flight model call. */
+function resetWorker(reason: Error) {
+  for (const request of pending.values()) {
+    request.signal?.removeEventListener("abort", request.onAbort ?? (() => undefined));
+    request.reject(reason);
+  }
+  pending.clear();
+  worker?.terminate();
+  worker = null;
 }
 
 function runWorker(
@@ -84,11 +101,35 @@ function runWorker(
   direction: ModelDirection,
   text?: string,
   onProgress?: (status: ModelPackStatus) => void,
+  signal?: AbortSignal,
 ) {
   return new Promise<string>((resolve, reject) => {
     const id = ++sequence;
-    pending.set(id, { resolve, reject, onProgress });
-    getWorker().postMessage({ id, type, direction, text });
+    const request: PendingRequest = { resolve, reject, onProgress, signal };
+    const onAbort = () => {
+      if (!pending.has(id)) return;
+      pending.delete(id);
+      request.signal?.removeEventListener("abort", onAbort);
+      // Transformers.js does not expose a reliable per-request cancellation;
+      // rebuilding the worker ensures the next query is immediately usable.
+      resetWorker(abortError());
+      reject(abortError());
+    };
+    request.onAbort = onAbort;
+    pending.set(id, request);
+    if (signal?.aborted) {
+      onAbort();
+      return;
+    }
+    signal?.addEventListener("abort", onAbort, { once: true });
+    try {
+      getWorker().postMessage({ id, type, direction, text });
+    } catch (error) {
+      pending.delete(id);
+      signal?.removeEventListener("abort", onAbort);
+      resetWorker(error instanceof Error ? error : new Error(String(error)));
+      reject(error instanceof Error ? error : new Error(String(error)));
+    }
   });
 }
 
@@ -123,10 +164,11 @@ export async function removeLocalModel(direction: ModelDirection) {
 export async function translateWithLocalModel(
   request: TranslationRequest,
   onProgress?: (status: ModelPackStatus) => void,
+  signal?: AbortSignal,
 ): Promise<TranslationResult> {
   const started = performance.now();
   const direction = directionFor(request.sourceLanguage);
-  const primaryText = await runWorker("translate", direction, request.text, onProgress);
+  const primaryText = await runWorker("translate", direction, request.text, onProgress, signal);
   return {
     sourceText: request.text,
     primaryText,

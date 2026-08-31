@@ -8,6 +8,7 @@ pub fn capabilities() -> PlatformCapabilities {
         trigger_key_label: "Alt".into(),
         accessibility: "unavailable".into(),
         screen_capture: "unavailable".into(),
+        hotkey_status: "disabled".into(),
         text_to_speech: false,
         platform_dictionary: false,
         launch_at_login: false,
@@ -15,6 +16,9 @@ pub fn capabilities() -> PlatformCapabilities {
 }
 
 pub fn start_hold_monitor(_app: AppHandle) {}
+pub fn open_accessibility_settings() -> Result<(), String> {
+    Err("当前平台不支持辅助功能设置".into())
+}
 pub fn speak(_text: &str, _locale: &str) -> Result<(), String> {
     Err("当前平台不支持系统朗读".into())
 }

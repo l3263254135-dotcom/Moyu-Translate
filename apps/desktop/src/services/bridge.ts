@@ -88,27 +88,51 @@ export async function platformCapabilities(): Promise<PlatformCapabilities> {
     triggerKeyLabel: windows ? "Alt" : "Option",
     accessibility: "not-determined",
     screenCapture: "not-determined",
+    hotkeyStatus: "starting",
     textToSpeech: true,
     platformDictionary: !windows,
     launchAtLogin: true,
   };
 }
 
+export async function openAccessibilitySettings(): Promise<void> {
+  if (isTauriRuntime()) await invokeCommand("open_accessibility_settings");
+}
+
 export async function translate(
   request: TranslationRequest,
   onModelProgress?: (status: ModelPackStatus) => void,
+  signal?: AbortSignal,
 ): Promise<TranslationResult> {
   if (isTauriRuntime()) {
     try {
       return await invokeCommand("translate", { request });
     } catch (error) {
       if (!String(error).includes("MODEL_REQUIRED")) throw error;
-      const result = await translateWithLocalModel(request, onModelProgress);
+      const result = await translateWithLocalModel(request, onModelProgress, signal);
       await invokeCommand("record_translation_result", { result });
       return result;
     }
   }
-  await new Promise((resolve) => setTimeout(resolve, 90));
+  if (signal?.aborted) {
+    const error = new Error("查询已取消");
+    error.name = "AbortError";
+    throw error;
+  }
+  await new Promise<void>((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, 90);
+    const onAbort = () => {
+      window.clearTimeout(timer);
+      const error = new Error("查询已取消");
+      error.name = "AbortError";
+      reject(error);
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+    if (signal?.aborted) onAbort();
+  });
   const result = request.text.trim().toLowerCase() === "ability"
     ? previewResult
     : {

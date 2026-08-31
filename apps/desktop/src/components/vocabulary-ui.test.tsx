@@ -71,8 +71,9 @@ describe("automatic pronunciation setting", () => {
       capabilities: {
         platform: "macos",
         triggerKeyLabel: "Option",
-        accessibility: "granted",
-        screenCapture: "granted",
+      accessibility: "granted",
+      screenCapture: "granted",
+      hotkeyStatus: "ready",
         textToSpeech: true,
         platformDictionary: true,
         launchAtLogin: false,

@@ -87,6 +87,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::platform_capabilities,
+            commands::open_accessibility_settings,
             commands::translate,
             commands::dictionary_suggestions,
             commands::capture_text_at_cursor,

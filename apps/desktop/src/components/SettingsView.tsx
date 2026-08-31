@@ -1,5 +1,6 @@
 import { Button } from "@moyu/ui";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, ExternalLink, RefreshCw, Trash2 } from "lucide-react";
+import { openAccessibilitySettings, platformCapabilities } from "../services/bridge";
 import { useAppStore } from "../store/useAppStore";
 
 export function SettingsView() {
@@ -10,6 +11,8 @@ export function SettingsView() {
   const installLanguageModel = useAppStore((state) => state.installLanguageModel);
   const removeLanguageModel = useAppStore((state) => state.removeLanguageModel);
   const close = useAppStore((state) => state.setSettingsOpen);
+  const setCapabilities = useAppStore((state) => state.setCapabilities);
+  const hotkeyStatus = capabilities?.hotkeyStatus ?? "starting";
 
   const updateDictionary = (patch: Partial<typeof preferences.dictionaryOptions>) =>
     updatePreferences({ dictionaryOptions: { ...preferences.dictionaryOptions, ...patch } });
@@ -77,12 +80,32 @@ export function SettingsView() {
 
       <div className="settings-section permission-grid">
         <h3>系统能力</h3>
+        <div className="status-row"><span>{capabilities?.triggerKeyLabel ?? "Option"} 长按监听</span><strong data-state={hotkeyStatus}>{hotkeyStatusText(hotkeyStatus)}</strong></div>
+        {capabilities?.platform === "macos" && hotkeyStatus === "permission-required" && (
+          <div className="permission-help">
+            <p>需要辅助功能权限才能监听 Option 长按。授权后 Moyu 会自动恢复，无需重启。</p>
+            <div className="permission-actions">
+              <button type="button" onClick={() => void openAccessibilitySettings()}><ExternalLink size={13} />打开系统设置</button>
+              <button type="button" onClick={async () => setCapabilities(await platformCapabilities())}><RefreshCw size={13} />重新检查权限</button>
+            </div>
+          </div>
+        )}
         <Status label="辅助功能 / UI Automation" value={capabilities?.accessibility ?? "not-determined"} />
         <Status label="屏幕捕获" value={capabilities?.screenCapture ?? "not-determined"} />
         <Status label="本地朗读" value={capabilities?.textToSpeech ? "granted" : "unavailable"} />
       </div>
     </div>
   );
+}
+
+function hotkeyStatusText(value: string) {
+  switch (value) {
+    case "ready": return "监听中";
+    case "permission-required": return "需要授权";
+    case "retrying": return "正在恢复";
+    case "disabled": return "已停用";
+    default: return "启动中";
+  }
 }
 
 function Toggle({ label, checked, onChange, disabled = false }: { label: string; checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean }) {
