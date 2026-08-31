@@ -77,7 +77,19 @@ pub fn run() {
             platform::start_hold_monitor(app.handle().clone());
             if std::env::args().any(|argument| argument == "--background") {
                 if let Some(window) = app.get_webview_window("panel") {
-                    let _ = window.hide();
+                    // A background launch is normally hidden, but keep the panel visible
+                    // when Accessibility permission is missing so the user can see the
+                    // actionable explanation and open System Settings.
+                    #[cfg(target_os = "macos")]
+                    let permission_missing = platform::capabilities().accessibility != "granted";
+                    #[cfg(not(target_os = "macos"))]
+                    let permission_missing = false;
+                    if permission_missing {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    } else {
+                        let _ = window.hide();
+                    }
                 }
             } else if let Some(window) = app.get_webview_window("panel") {
                 let _ = window.show();

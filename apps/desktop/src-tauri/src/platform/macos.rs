@@ -1,4 +1,5 @@
 use std::{
+    io::Write,
     path::PathBuf,
     process::Command,
     sync::{
@@ -14,6 +15,8 @@ static HOTKEY_STATUS: std::sync::atomic::AtomicU8 = std::sync::atomic::AtomicU8:
 use core_foundation::runloop::{kCFRunLoopCommonModes, CFRunLoop};
 use core_foundation::{
     base::{CFRange, TCFType},
+    boolean::CFBoolean,
+    dictionary::CFDictionary,
     mach_port::CFMachPortRef,
     string::{CFString, CFStringRef},
 };
@@ -33,6 +36,9 @@ use crate::{
 #[link(name = "ApplicationServices", kind = "framework")]
 extern "C" {
     fn AXIsProcessTrusted() -> bool;
+    fn AXIsProcessTrustedWithOptions(options: core_foundation::dictionary::CFDictionaryRef)
+        -> bool;
+    static kAXTrustedCheckOptionPrompt: CFStringRef;
 }
 
 #[link(name = "CoreGraphics", kind = "framework")]
@@ -86,6 +92,11 @@ pub fn capabilities() -> PlatformCapabilities {
 
 pub fn start_hold_monitor(app: AppHandle) {
     thread::spawn(move || {
+        let ax_trusted = unsafe { AXIsProcessTrusted() };
+        hotkey_log(format!(
+            "monitor thread started pid={} ax_trusted={ax_trusted}",
+            std::process::id()
+        ));
         let held = Arc::new(AtomicBool::new(false));
         let cancelled = Arc::new(AtomicBool::new(false));
         let fired = Arc::new(AtomicBool::new(false));
@@ -101,6 +112,10 @@ pub fn start_hold_monitor(app: AppHandle) {
                     .map(|time| time.elapsed() >= Duration::from_secs(8))
                     .unwrap_or(true);
                 if should_prompt {
+                    hotkey_log(
+                        "accessibility permission is not granted; opening settings".to_string(),
+                    );
+                    request_accessibility_prompt();
                     let _ = open_accessibility_settings();
                     last_permission_prompt = Some(Instant::now());
                 }
@@ -116,10 +131,15 @@ pub fn start_hold_monitor(app: AppHandle) {
             let callback_app = app.clone();
             let tap_ref = Arc::new(AtomicPtr::<std::ffi::c_void>::new(std::ptr::null_mut()));
             let callback_tap_ref = Arc::clone(&tap_ref);
+            // A HID-level listen-only tap receives modifier flag changes even when the
+            // frontmost application is a full-screen or accessory app. Session taps can
+            // be silently filtered for LSUIElement processes on some macOS releases.
             let tap = CGEventTap::new(
-                CGEventTapLocation::Session,
+                CGEventTapLocation::HID,
                 CGEventTapPlacement::HeadInsertEventTap,
                 CGEventTapOptions::ListenOnly,
+                // TapDisabledByTimeout/UserInput are delivered out-of-band by CoreGraphics;
+                // they must not be placed in the bit-mask (their enum values are -2/-1).
                 vec![CGEventType::FlagsChanged, CGEventType::KeyDown],
                 move |_, event_type, event| {
                     if matches!(
@@ -130,6 +150,7 @@ pub fn start_hold_monitor(app: AppHandle) {
                         callback_cancelled.store(true, Ordering::SeqCst);
                         callback_fired.store(false, Ordering::SeqCst);
                         callback_generation.fetch_add(1, Ordering::SeqCst);
+                        hotkey_log(format!("event tap disabled: {:?}", event_type));
                         emit_hotkey_status(&callback_app, "retrying");
                         let raw = callback_tap_ref.load(Ordering::SeqCst) as CFMachPortRef;
                         let can_reenable = !raw.is_null();
@@ -154,6 +175,7 @@ pub fn start_hold_monitor(app: AppHandle) {
                             .get_flags()
                             .contains(core_graphics::event::CGEventFlags::CGEventFlagAlternate);
                         if option_active && !callback_held.swap(true, Ordering::SeqCst) {
+                            hotkey_log(format!("option down keycode={key_code}"));
                             callback_cancelled.store(false, Ordering::SeqCst);
                             callback_fired.store(false, Ordering::SeqCst);
                             let current_generation =
@@ -187,6 +209,7 @@ pub fn start_hold_monitor(app: AppHandle) {
                                 }
                             });
                         } else if !option_active {
+                            hotkey_log(format!("option up keycode={key_code}"));
                             callback_held.store(false, Ordering::SeqCst);
                             callback_cancelled.store(false, Ordering::SeqCst);
                             callback_fired.store(false, Ordering::SeqCst);
@@ -195,6 +218,7 @@ pub fn start_hold_monitor(app: AppHandle) {
                     } else if matches!(event_type, CGEventType::KeyDown)
                         && callback_held.load(Ordering::SeqCst)
                     {
+                        hotkey_log(format!("key down cancelled hold keycode={key_code}"));
                         callback_cancelled.store(true, Ordering::SeqCst);
                         callback_generation.fetch_add(1, Ordering::SeqCst);
                     }
@@ -202,12 +226,14 @@ pub fn start_hold_monitor(app: AppHandle) {
                 },
             );
             let Ok(tap) = tap else {
+                hotkey_log("CGEventTapCreate(HID) failed".to_string());
                 failures = failures.saturating_add(1);
                 emit_hotkey_status(&app, "retrying");
                 thread::sleep(retry_delay(failures));
                 continue;
             };
             failures = 0;
+            hotkey_log("CGEventTapCreate(HID) succeeded".to_string());
             tap_ref.store(
                 tap.mach_port.as_concrete_TypeRef() as *mut _,
                 Ordering::SeqCst,
@@ -215,6 +241,7 @@ pub fn start_hold_monitor(app: AppHandle) {
             let current = CFRunLoop::get_current();
             unsafe {
                 let Ok(loop_source) = tap.mach_port.create_runloop_source(0) else {
+                    hotkey_log("CFMachPort create_runloop_source failed".to_string());
                     tap_ref.store(std::ptr::null_mut(), Ordering::SeqCst);
                     emit_hotkey_status(&app, "disabled");
                     thread::sleep(retry_delay(1));
@@ -222,6 +249,7 @@ pub fn start_hold_monitor(app: AppHandle) {
                 };
                 current.add_source(&loop_source, kCFRunLoopCommonModes);
                 tap.enable();
+                hotkey_log("event tap enabled; entering run loop".to_string());
                 emit_hotkey_status(&app, "ready");
                 CFRunLoop::run_current();
                 current.remove_source(&loop_source, kCFRunLoopCommonModes);
@@ -231,6 +259,15 @@ pub fn start_hold_monitor(app: AppHandle) {
             thread::sleep(Duration::from_millis(100));
         }
     });
+}
+
+fn request_accessibility_prompt() {
+    // Ask macOS to show its native one-time consent dialog in addition to opening
+    // the Accessibility pane. The returned value is intentionally ignored because
+    // consent is granted asynchronously by the user.
+    let key = unsafe { CFString::wrap_under_get_rule(kAXTrustedCheckOptionPrompt) };
+    let options = CFDictionary::from_CFType_pairs(&[(key, CFBoolean::true_value())]);
+    let _ = unsafe { AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef()) };
 }
 
 fn retry_delay(failures: u32) -> Duration {
@@ -256,6 +293,23 @@ fn emit_hotkey_status(app: &AppHandle, status: &str) {
     let _ = app.emit("moyu://hotkey-status", status);
 }
 
+/// Lightweight diagnostics for field reports where the menu-bar app has no attached terminal.
+/// The file is intentionally outside the app data directory and can be removed at any time.
+fn hotkey_log(message: impl AsRef<str>) {
+    let path = std::env::temp_dir().join("moyu-translate-hotkey.log");
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_secs())
+        .unwrap_or_default();
+    if let Ok(mut file) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+    {
+        let _ = writeln!(file, "{timestamp} {}", message.as_ref());
+    }
+}
+
 pub fn open_accessibility_settings() -> Result<(), String> {
     Command::new("open")
         .arg(ACCESSIBILITY_SETTINGS_URL)
@@ -265,6 +319,7 @@ pub fn open_accessibility_settings() -> Result<(), String> {
 }
 
 fn show_panel_near_cursor(app: &AppHandle) {
+    hotkey_log("hold threshold reached; showing panel".to_string());
     let Ok(source) = core_graphics::event_source::CGEventSource::new(
         core_graphics::event_source::CGEventSourceStateID::CombinedSessionState,
     ) else {
@@ -282,6 +337,10 @@ fn show_panel_near_cursor(app: &AppHandle) {
     let app_handle = app.clone();
     let _ = app.run_on_main_thread(move || {
         if let Some(window) = app_handle.get_webview_window("panel") {
+            hotkey_log(format!(
+                "panel found; positioning at {},{}",
+                point.x, point.y
+            ));
             let (x, y) = clamped_panel_position(&window, point.x as i32, point.y as i32);
             let _ = window.set_position(PhysicalPosition::new(x, y));
             let _ = window.show();
@@ -290,6 +349,8 @@ fn show_panel_near_cursor(app: &AppHandle) {
                 "moyu://trigger",
                 serde_json::json!({ "x": point.x, "y": point.y }),
             );
+        } else {
+            hotkey_log("panel window not found".to_string());
         }
     });
 }

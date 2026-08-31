@@ -1,7 +1,7 @@
 import { MoyuMark } from "@moyu/ui";
 import { BookMarked, Crosshair, LoaderCircle, Moon, Pin, Settings, Sun, Undo2 } from "lucide-react";
 import { useEffect, useRef, type ReactNode } from "react";
-import { hidePanel, isTauriRuntime, platformCapabilities } from "./services/bridge";
+import { hidePanel, isTauriRuntime, openAccessibilitySettings, platformCapabilities } from "./services/bridge";
 import { ResultView } from "./components/ResultView";
 import { LibraryView } from "./components/LibraryView";
 import { SettingsView } from "./components/SettingsView";
@@ -27,6 +27,7 @@ export function App() {
   const togglePinned = useAppStore((state) => state.togglePinned);
   const capabilities = useAppStore((state) => state.capabilities);
   const setCapabilities = useAppStore((state) => state.setCapabilities);
+  const hotkeyNeedsPermission = capabilities?.platform === "macos" && capabilities.hotkeyStatus === "permission-required";
 
   useEffect(() => { void initialize(); }, [initialize]);
   useEffect(() => {
@@ -112,6 +113,16 @@ export function App() {
           <span>{/[\u3400-\u9fff]/u.test(query) ? "简体中文 → EN" : "EN → 简体中文"} · 本地</span>
           <span>{capabilities?.platform === "windows" ? "Windows" : capabilities?.platform === "macos" ? "macOS" : "预览"}</span>
         </div>
+
+        {hotkeyNeedsPermission && (
+          <div className="permission-banner" role="status">
+            <div>
+              <strong>需要辅助功能权限</strong>
+              <span>开启后才能监听 Option 长按；授权后无需重启。</span>
+            </div>
+            <button type="button" onClick={() => void openAccessibilitySettings()}>打开系统设置</button>
+          </div>
+        )}
 
         {error && <div className="error-message">{error}</div>}
         {!error && result && <ResultView />}

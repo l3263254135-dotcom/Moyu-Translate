@@ -177,6 +177,47 @@ button {
   font-size: 10px;
 }
 
+.permission-banner {
+  margin: 3px 0 10px;
+  padding: 10px 11px;
+  border: 1px solid color-mix(in srgb, var(--moyu-accent) 55%, var(--moyu-line));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--moyu-ink);
+  background: var(--moyu-accent-soft);
+  font-size: 11px;
+}
+
+.permission-banner div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.permission-banner strong {
+  font-size: 12px;
+}
+
+.permission-banner span {
+  color: var(--moyu-muted);
+  line-height: 1.35;
+}
+
+.permission-banner button {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 0;
+  border-radius: 7px;
+  color: #27180d;
+  background: var(--moyu-accent);
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .result__head {
   display: flex;
   align-items: flex-start;
