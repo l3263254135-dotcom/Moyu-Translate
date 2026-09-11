@@ -162,7 +162,10 @@ a { color: inherit; }
 .demo-result__word strong { font-size: 17px; }
 .demo-result__word button { padding: 0; border: 0; color: var(--moyu-accent-strong); background: none; }
 .demo-result__word svg { width: 14px; }
-.demo-result__ipa { color: var(--moyu-faint); font-size: 9px; }
+.demo-result__pronunciations { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 5px; }
+.demo-result__pronunciations span { padding: 3px 6px; border: 1px solid var(--moyu-line); border-radius: 999px; display: inline-flex; align-items: center; gap: 4px; color: var(--moyu-faint); background: var(--moyu-surface-raised); font-size: 9px; }
+.demo-result__pronunciations b { color: var(--moyu-accent-strong); font-size: 8px; }
+.demo-result__pronunciations svg { width: 10px; color: var(--moyu-accent-strong); }
 .demo-result__meaning { margin: 7px 0; display: flex; gap: 7px; font-size: 12px; }
 .demo-result__meaning b { color: var(--moyu-accent-strong); }
 .hero-demo__key { position: absolute; left: 42px; bottom: 22px; display: flex; align-items: center; gap: 9px; color: var(--moyu-faint); font-size: 9px; }
@@ -233,10 +236,13 @@ a { color: inherit; }
 .dictionary-copy li { display: flex; align-items: center; gap: 7px; color: var(--moyu-muted); font-size: 11px; }
 .dictionary-copy li svg { width: 16px; color: var(--moyu-accent-strong); }
 .dictionary-preview { padding: 27px 29px 22px; border: 1px solid var(--moyu-line); border-radius: 14px; background: var(--moyu-surface-raised); box-shadow: var(--moyu-shadow); transform: rotate(1.2deg); }
-.dictionary-preview__head { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: baseline; }
+.dictionary-preview__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .dictionary-preview__head strong { font-size: 27px; }
-.dictionary-preview__head span { color: var(--moyu-muted); font-size: 11px; }
+.dictionary-preview__head button { width: 30px; height: 30px; padding: 0; border: 1px solid color-mix(in srgb, var(--moyu-accent) 36%, var(--moyu-line)); border-radius: 50%; display: grid; place-items: center; color: var(--moyu-accent-strong); background: var(--moyu-accent-soft); }
 .dictionary-preview__head svg { width: 17px; color: var(--moyu-accent-strong); }
+.dictionary-preview__pronunciations { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+.dictionary-preview__pronunciations span { padding: 5px 8px; border: 1px solid var(--moyu-line); border-radius: 999px; color: var(--moyu-muted); background: color-mix(in srgb, var(--moyu-surface) 84%, var(--moyu-accent-soft)); font-size: 10px; }
+.dictionary-preview__pronunciations b { color: var(--moyu-accent-strong); font-size: 9px; }
 .dictionary-preview__meaning { margin: 20px 0 15px; display: flex; align-items: baseline; gap: 10px; }
 .dictionary-preview__meaning b { color: var(--moyu-accent-strong); font-size: 13px; }
 .dictionary-preview__meaning p { margin: 0; font-family: var(--moyu-font-reading); font-size: 21px; font-weight: 700; }

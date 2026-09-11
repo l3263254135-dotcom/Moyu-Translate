@@ -16,20 +16,20 @@ const root = withBase(base);
 const englishRoot = withBase(base, "en");
 const copy = zh ? {
   title: "Moyu Translate - macOS 与 Windows 本地悬浮翻译",
-  description: "光标停在文字上，长按 Option 或 Alt 即刻翻译。支持网页、图片、视频、PDF 与游戏，本地词典和离线模型不打断你的节奏。",
+  description: "光标停在文字上，长按 Option 或 Alt 即刻翻译。精致悬浮卡片展示英美双音、自动发音、本地词典和离线模型，不打断你的阅读节奏。",
   nav: ["功能", "场景", "词典", "隐私", "下载"],
   heroLead: "停一下，就懂了。",
-  heroBody: "光标停在任意文字上，长按 Option 或 Alt。无需选中、复制或切换窗口，Moyu 在原地给出最常用的解释。",
+  heroBody: "光标停在任意文字上，长按 Option 或 Alt。无需选中、复制或切换窗口，Moyu 用一张精致悬浮卡片给出释义、英美音标和本地朗读。",
   featureTitle: "翻译应该贴着你的节奏走",
-  featureBody: "阅读论文、看字幕或进入游戏时，你只需要理解眼前这一处。Moyu 把复杂能力压缩成一个按键和一块安静的悬浮窗。",
+  featureBody: "阅读论文、看字幕或进入游戏时，你只需要理解眼前这一处。Moyu 把取词、释义、英美双音和离线能力压缩成一个按键和一块安静的悬浮窗。",
 } : {
   title: "Moyu Translate - Local hover translation for macOS and Windows",
-  description: "Hover over text and hold Option or Alt to translate instantly across webpages, images, videos, PDFs and games with local dictionaries and offline models.",
+  description: "Hover over text and hold Option or Alt to translate instantly with a polished floating card, UK/US pronunciation, local dictionaries and offline models.",
   nav: ["Features", "Scenarios", "Dictionary", "Privacy", "Download"],
   heroLead: "Pause. Understand. Continue.",
-  heroBody: "Hover over any text and hold Option or Alt. No selecting, copying or context switching. Moyu shows the meaning that matters, right where you are.",
+  heroBody: "Hover over any text and hold Option or Alt. No selecting, copying or context switching. Moyu shows the meaning, UK/US pronunciation and local speech in one polished card.",
   featureTitle: "Translation that follows your pace",
-  featureBody: "When you are reading a paper, watching subtitles or playing a game, you only need the line in front of you. Moyu turns the hard parts into one key and a quiet floating panel.",
+  featureBody: "When you are reading a paper, watching subtitles or playing a game, you only need the line in front of you. Moyu turns capture, meaning, UK/US pronunciation and offline lookup into one quiet floating panel.",
 };
 ---
 <BaseLayout lang={zh ? "zh-CN" : "en"} title={copy.title} description={copy.description} path={zh ? "/" : "/en/"}>
@@ -62,7 +62,7 @@ const copy = zh ? {
       <div class="feature-rail">
         <article><MousePointer2 /><h3>{zh ? "悬停即译" : "Hover to translate"}</h3><p>{zh ? "保留光标锚点，结果在附近出现。" : "The result appears beside your original cursor."}</p></article>
         <article><ScanText /><h3>{zh ? "无需选中" : "No selection"}</h3><p>{zh ? "辅助功能优先，局部 OCR 自动回退。" : "Accessibility first, local OCR as fallback."}</p></article>
-        <article><LockKeyhole /><h3>{zh ? "离线运行" : "Works offline"}</h3><p>{zh ? "词典与模型留在本机，不上传查询。" : "Dictionaries and models stay on your device."}</p></article>
+        <article><LockKeyhole /><h3>{zh ? "离线运行" : "Works offline"}</h3><p>{zh ? "词典、发音入口与模型留在本机，不上传查询。" : "Dictionaries, pronunciation controls and models stay on your device."}</p></article>
       </div>
     </section>
 
@@ -79,11 +79,12 @@ const copy = zh ? {
     <section class="dictionary-section" id="dictionary">
       <div class="dictionary-copy">
         <h2>{zh ? "先给答案，再给深度" : "The answer first. Depth when needed."}</h2>
-        <p>{zh ? "25 万条结构化词条把最常用释义放在第一眼。音标、词形、例句和同反义词按需展开，信息多但不拥挤。" : "250,000 structured entries put the common meaning first. Pronunciation, forms, examples and relations unfold only when you need them."}</p>
-        <ul><li><Volume2 />{zh ? "系统语音朗读" : "System pronunciation"}</li><li><Star />{zh ? "生词本卡片复习与可选历史" : "Vocabulary flashcards and opt-in history"}</li></ul>
+        <p>{zh ? "25 万条结构化词条把最常用释义放在第一眼。UK / US 音标、手动朗读、词形、例句和同反义词按需展开，信息多但不拥挤。" : "250,000 structured entries put the common meaning first. UK / US IPA, manual speech, forms, examples and relations unfold only when you need them."}</p>
+        <ul><li><Volume2 />{zh ? "自动美音 + 手动英美双音" : "Auto US speech + manual UK/US"}</li><li><Star />{zh ? "生词本卡片复习与可选历史" : "Vocabulary flashcards and opt-in history"}</li></ul>
       </div>
       <div class="dictionary-preview">
-        <div class="dictionary-preview__head"><strong>ability</strong><span>US /əbˈɪləti/</span><Volume2 /></div>
+        <div class="dictionary-preview__head"><strong>ability</strong><button type="button" aria-label="US pronunciation"><Volume2 /></button></div>
+        <div class="dictionary-preview__pronunciations"><span><b>UK</b> /əˈbɪləti/</span><span><b>US</b> /əˈbɪləti/</span></div>
         <div class="dictionary-preview__meaning"><b>n.</b><p>能力；才能</p></div>
         <div class="dictionary-preview__tags"><span>Oxford 3000</span><span>IELTS</span><span>TOEFL</span></div>
         <div class="dictionary-preview__row"><span>更多释义</span><small>2</small></div>

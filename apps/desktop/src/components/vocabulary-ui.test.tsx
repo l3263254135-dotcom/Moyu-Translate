@@ -12,12 +12,24 @@ import { VocabularyReview } from "./VocabularyReview";
 
 (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+const bridgeMocks = vi.hoisted(() => ({
+  speak: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("../services/bridge", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../services/bridge")>()),
+  speak: bridgeMocks.speak,
+}));
+
 function result(sourceText = "ability", primaryText = "能力"): TranslationResult {
   return {
     sourceText,
     primaryText,
     headword: sourceText,
-    pronunciations: [{ locale: "general", ipa: "əˈbɪləti", source: "test" }],
+    pronunciations: [
+      { locale: "en-GB", ipa: "əˈbɪləti", source: "test" },
+      { locale: "en-US", ipa: "əˈbɪləti", source: "test" },
+    ],
     senses: [{ id: "sense", partOfSpeech: "n.", meanings: [primaryText], source: "test" }],
     forms: [],
     examples: [{ id: "example", english: "Ability matters.", chinese: "能力很重要。", source: "test" }],
@@ -64,6 +76,30 @@ describe("vocabulary result action", () => {
   });
 });
 
+describe("result pronunciation controls", () => {
+  it("shows UK and US pronunciation pills", () => {
+    act(() => useAppStore.setState({ result: result(), vocabularyCandidate: null }));
+
+    const view = render(<ResultView />);
+
+    expect(view.container.querySelector('button[aria-label="英音朗读"]')?.closest(".pronunciation-pill")?.textContent).toContain("UK/əˈbɪləti/");
+    expect(view.container.querySelector('button[aria-label="美音朗读"]')?.closest(".pronunciation-pill")?.textContent).toContain("US/əˈbɪləti/");
+    view.unmount();
+  });
+
+  it("speaks the selected accent manually", () => {
+    act(() => useAppStore.setState({ result: result("ability"), vocabularyCandidate: null }));
+    const view = render(<ResultView />);
+
+    act(() => view.container.querySelector<HTMLButtonElement>('button[aria-label="英音朗读"]')?.click());
+    act(() => view.container.querySelector<HTMLButtonElement>('button[aria-label="美音朗读"]')?.click());
+
+    expect(bridgeMocks.speak).toHaveBeenCalledWith("ability", "en-GB");
+    expect(bridgeMocks.speak).toHaveBeenCalledWith("ability", "en-US");
+    view.unmount();
+  });
+});
+
 describe("automatic pronunciation setting", () => {
   it("shows the enabled-by-default toggle in settings", () => {
     useAppStore.setState({
@@ -81,6 +117,7 @@ describe("automatic pronunciation setting", () => {
     });
     const view = render(<SettingsView />);
     expect(view.container.textContent).toContain("查询后自动发音");
+    expect(view.container.textContent).toContain("结果页可手动选择 UK / US 发音");
     const label = Array.from(view.container.querySelectorAll("label")).find((item) => item.textContent?.includes("查询后自动发音"));
     expect(label?.querySelector<HTMLInputElement>("input")?.checked).toBe(true);
     view.unmount();

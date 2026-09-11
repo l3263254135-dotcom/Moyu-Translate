@@ -3,9 +3,9 @@ import { MousePointer2, Volume2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
 const words = [
-  { word: "emergent", pos: "adj.", meaning: "涌现的；随规模突然出现的", tag: "TOEFL" },
-  { word: "serendipity", pos: "n.", meaning: "意外发现；机缘巧合", tag: "GRE" },
-  { word: "immersive", pos: "adj.", meaning: "沉浸式的；令人投入的", tag: "IELTS" },
+  { word: "emergent", pos: "adj.", meaning: "涌现的；随规模突然出现的", tag: "TOEFL", uk: "ɪˈmɜːdʒənt", us: "ɪˈmɝːdʒənt" },
+  { word: "serendipity", pos: "n.", meaning: "意外发现；机缘巧合", tag: "GRE", uk: "ˌserənˈdɪpəti", us: "ˌserənˈdɪpəti" },
+  { word: "immersive", pos: "adj.", meaning: "沉浸式的；令人投入的", tag: "IELTS", uk: "ɪˈmɜːsɪv", us: "ɪˈmɝːsɪv" },
 ];
 
 export function HeroDemo({ lang }: { lang: "zh" | "en" }) {
@@ -35,8 +35,11 @@ export function HeroDemo({ lang }: { lang: "zh" | "en" }) {
         <p className="is-muted">We evaluate retrieval, reasoning and multilingual understanding across twelve benchmarks.</p>
         <div className="demo-result">
           <div className="demo-result__brand"><MoyuMark /><span>Moyu Translate</span></div>
-          <div className="demo-result__word"><strong>{current.word}</strong><button type="button" aria-label="Pronounce"><Volume2 /></button></div>
-          <span className="demo-result__ipa">/ɪˈmɜːdʒənt/</span>
+          <div className="demo-result__word"><strong>{current.word}</strong><button type="button" aria-label="Pronounce US"><Volume2 /></button></div>
+          <div className="demo-result__pronunciations">
+            <span><b>UK</b> /{current.uk}/ <Volume2 aria-hidden="true" /></span>
+            <span><b>US</b> /{current.us}/ <Volume2 aria-hidden="true" /></span>
+          </div>
           <div className="demo-result__meaning"><b>{current.pos}</b><span>{current.meaning}</span></div>
           <Badge>{current.tag}</Badge>
         </div>
