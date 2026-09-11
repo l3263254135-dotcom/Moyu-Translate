@@ -52,7 +52,7 @@ export function SettingsView() {
           onChange={(autoPronounce) => updatePreferences({ autoPronounce })}
           disabled={capabilities?.textToSpeech === false}
         />
-        <p className="settings-note">仅在英文单词或短语查询成功后使用系统英语语音朗读。</p>
+        <p className="settings-note">英文单词或短语查询成功后默认美音自动朗读；结果页可手动选择 UK / US 发音。</p>
       </div>
 
       <div className="settings-section">

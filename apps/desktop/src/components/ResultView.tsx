@@ -1,4 +1,5 @@
 import { Badge, Disclosure } from "@moyu/ui";
+import type { Pronunciation } from "@moyu/contracts";
 import { Copy, Star, Volume2 } from "lucide-react";
 import { useState } from "react";
 import { speak } from "../services/bridge";
@@ -17,6 +18,8 @@ export function ResultView() {
 
   const primarySense = result.senses[0];
   const additionalSenses = result.senses.slice(1);
+  const pronunciationText = result.headword ?? result.sourceText;
+  const pronunciationItems = preferredPronunciations(result.pronunciations);
   const setSection = (section: string) => setOpen((value) => ({ ...value, [section]: !value[section] }));
 
   return (
@@ -25,17 +28,13 @@ export function ResultView() {
         <div>
           <div className="result__word-row">
             <h2>{result.headword ?? result.sourceText}</h2>
-            <button className="icon-action" type="button" onClick={() => speak(result.headword ?? result.sourceText)} aria-label="朗读">
+            <button className="icon-action icon-action--primary" type="button" onClick={() => void speak(pronunciationText, "en-US").catch(() => undefined)} aria-label="美音朗读单词">
               <Volume2 size={15} />
             </button>
           </div>
-          {result.pronunciations.length > 0 && (
+          {pronunciationItems.length > 0 && (
             <div className="pronunciations">
-              {result.pronunciations.map((item) => (
-                <span key={`${item.locale}-${item.ipa}`}>
-                  {item.locale === "en-GB" ? "UK" : item.locale === "en-US" ? "US" : "IPA"} /{item.ipa}/
-                </span>
-              ))}
+              {pronunciationItems.map((item) => <PronunciationPill key={`${item.locale}-${item.ipa}`} item={item} text={pronunciationText} />)}
             </div>
           )}
         </div>
@@ -132,5 +131,30 @@ export function ResultView() {
         <span>{result.latencyMilliseconds}ms</span>
       </footer>
     </div>
+  );
+}
+
+function preferredPronunciations(pronunciations: Pronunciation[]) {
+  const byLocale = new Map<Pronunciation["locale"], Pronunciation>();
+  pronunciations.forEach((item) => {
+    if (!byLocale.has(item.locale)) byLocale.set(item.locale, item);
+  });
+  return (["en-GB", "en-US", "general"] as const)
+    .map((locale) => byLocale.get(locale))
+    .filter((item): item is Pronunciation => Boolean(item));
+}
+
+function PronunciationPill({ item, text }: { item: Pronunciation; text: string }) {
+  const label = item.locale === "en-GB" ? "UK" : item.locale === "en-US" ? "US" : "IPA";
+  const locale = item.locale === "en-GB" ? "en-GB" : "en-US";
+  const ariaLabel = item.locale === "en-GB" ? "英音朗读" : item.locale === "en-US" ? "美音朗读" : "默认朗读";
+  return (
+    <span className="pronunciation-pill">
+      <strong>{label}</strong>
+      <span>/{item.ipa}/</span>
+      <button type="button" onClick={() => void speak(text, locale).catch(() => undefined)} aria-label={ariaLabel}>
+        <Volume2 size={12} />
+      </button>
+    </span>
   );
 }
