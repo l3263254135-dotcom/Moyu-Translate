@@ -51,11 +51,15 @@ gh auth status >/dev/null 2>&1 || { printf 'GitHub CLI login required: gh auth l
 scan() {
   local target=$1
   local hits
+  local slash='/'
+  local user_segment='Users'
+  local home_segment='home'
+  local private_path_pattern="(${slash}${user_segment}${slash}[^/${slash}[:space:]]+${slash}|${slash}${home_segment}${slash}[^/${slash}[:space:]]+${slash}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY)"
   hits=$(rg --hidden -n -I \
     --glob '!.git/**' --glob '!node_modules/**' --glob '!dist/**' \
     --glob '!*.png' --glob '!*.jpg' --glob '!*.pdf' \
     --glob '!*.sqlite' --glob '!*.icns' --glob '!**/scripts/publish-project.sh' \
-    '(/Users/[^/[:space:]]+/|/home/[^/[:space:]]+/|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|BEGIN (RSA |OPENSSH |EC )?PRIVATE KEY)' \
+    "$private_path_pattern" \
     "$target") || {
       local code=$?
       [[ "$code" == 1 ]] || return "$code"
