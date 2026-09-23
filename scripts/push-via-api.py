@@ -84,8 +84,7 @@ def main():
         return
 
     for commit in commits:
-        entries = []
-        files = []
+        local_entries = {}
         for line in subprocess.check_output(["git", "ls-tree", "-rz", commit]).split(b"\0"):
             if not line:
                 continue
@@ -93,7 +92,23 @@ def main():
             mode, kind, sha = metadata.decode().split()
             if kind != "blob":
                 raise SystemExit(f"Unsupported Git entry {kind}: {path!r}")
-            files.append((mode, path.decode(), sha, subprocess.check_output(["git", "cat-file", "blob", sha])))
+            local_entries[path.decode()] = (mode, sha)
+
+        remote_entries = {}
+        if remote:
+            remote_commit = api("GET", f"{base}/commits/{remote}")
+            remote_tree = api("GET", f"{base}/trees/{remote_commit['tree']['sha']}?recursive=1")
+            remote_entries = {
+                item["path"]: (item.get("mode"), item.get("sha"))
+                for item in remote_tree.get("tree", [])
+                if item.get("type") == "blob"
+            }
+        changed_paths = sorted(set(local_entries) | set(remote_entries))
+        changed_paths = [path for path in changed_paths if local_entries.get(path) != remote_entries.get(path)]
+        files = [
+            (local_entries[path][0], path, local_entries[path][1], subprocess.check_output(["git", "cat-file", "blob", local_entries[path][1]]))
+            for path in changed_paths if path in local_entries
+        ]
 
         def upload(item):
             mode, path, sha, contents = item
@@ -104,12 +119,15 @@ def main():
 
         with ThreadPoolExecutor(max_workers=12) as pool:
             uploaded = list(pool.map(upload, files))
-        entries = []
+        entries = [{"path": path, "mode": "100644", "type": "blob", "sha": None} for path in changed_paths if path not in local_entries]
         for mode, path, sha, blob in uploaded:
             if blob != sha:
                 raise SystemExit(f"Blob mismatch: {path!r}")
             entries.append({"path": path, "mode": mode, "type": "blob", "sha": blob})
-        tree = api("POST", f"{base}/trees", {"tree": entries})["sha"]
+        tree_payload = {"tree": entries}
+        if remote:
+            tree_payload["base_tree"] = remote_commit["tree"]["sha"]
+        tree = api("POST", f"{base}/trees", tree_payload)["sha"]
         expected_tree = git("rev-parse", f"{commit}^{{tree}}")
         if tree != expected_tree:
             raise SystemExit(f"Tree mismatch: {commit} ({tree} != {expected_tree})")
